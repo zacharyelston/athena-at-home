@@ -1,0 +1,26 @@
+# Form W-2 Wage and Tax Statement 2025
+Copy B - To Be Filed With Employee’s FEDERAL Tax Return (sample for testing, not a real form)
+
+| a Employee’s social security number | b Employer identification number (EIN) |
+| --- | --- |
+| XXX-XX-1234    | 00-0012345    |
+
+| c Employer’s name    | d Employee’s name    |
+| --- | --- |
+| Acme Tools Inc    | Alex Sample    |
+
+| 1 Wages, tips, other compensation    | 2 Federal income tax withheld    |
+| --- | --- |
+| 63,700.00    | 7,212.40    |
+
+| 3 Social security wages    | 4 Social security tax withheld    |
+| --- | --- |
+| 63,700.00    | 3,949.40    |
+
+| 5 Medicare wages and tips    | 6 Medicare tax withheld    |
+| --- | --- |
+| 63,700.00    | 923.65    |
+
+| 16 State wages, tips, etc.    | 17 State income tax    |
+| --- | --- |
+| 63,700.00    | 2,548.00    |

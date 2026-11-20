@@ -1,0 +1,32 @@
+Riverbend Community Bank
+Member FDIC | PO Box 4100, Lakeview, ST 00012 | 1-800-555-0142
+
+Alex and Jordan Sample
+100 Example Lane
+Springfield, ST 00000
+
+Statement Period: September 1, 2026 - September 30, 2026
+Everyday Checking Account ending in 4821
+
+Beginning balance    $3,214.56
+Deposits and credits    $4,900.42
+Withdrawals and debits    $2,671.44
+Ending balance    $5,443.54
+
+Transaction Detail
+| Date  | Description    | Amount    | Balance    |
+|---|---|---|---|
+| 09/02 | PAYROLL DEPOSIT ACCOUNT    | 2,450.00  | $5,644.56  |
+| 09/03 | SPRINGFIELD WATER UTIL    | -64.18    | $5,600.38  |
+| 09/05 | GROCER MART #212    | -142.37   | $5,458.01  |
+| 09/08 | CHECK 1043    | -350.00   | $5,108.01  |
+| 09/10 | ONLINE TRANSFER TO SAVINGS    | -500.00   | $4,608.01  |
+| 09/12 | PHARMACY PLUS    | -23.49    | $4,584.52  |
+| 09/15 | MORTGAGE PMT LAKEVIEW HOME LOANS    | -1,287.66 | $3,296.86  |
+| 09/16 | PAYROLL DEPOSIT ACCOUNT    | 2,450.00  | $5,746.86  |
+| 09/19 | FUEL STOP 88    | -48.20    | $5,698.66  |
+| 09/22 | SCHOOL LUNCH ACCOUNT    | -40.00    | $5,658.66  |
+| 09/24 | ELECTRIC CO-OP AUTOPAY    | -118.73   | $5,539.93  |
+| 09/27 | GROCER MART #212    | -96.81    | $5,443.12  |
+| 09/29 | INTEREST PAID    | 0.42    | $5,443.54  |
+| 09/30 | MONTHLY SERVICE FEE WAIVED    | 0.00    | $5,443.54  |

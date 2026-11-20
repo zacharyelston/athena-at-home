@@ -111,17 +111,17 @@ Tier-0 text makes a document searchable the moment it's captured; tier 1 replace
 
 ### Image reduction: matching capture DPI to DeepSeek-OCR-2's token budget
 
-DeepSeek-OCR-2 encodes a page as one 1024² global view (256 vision tokens) plus 0–6 local 768² crops
-(144 tokens each), so **256–1120 tokens per page**. That ties directly to capture resolution:
+DeepSeek-OCR-2 encodes a page as one 1024² overview (256 vision tokens) plus 0–6 local 768² tiles (144 tokens
+each), so **257–1121 image tokens per page**. Measured in Phase 0 ([results](phase0-results.md)):
 
-- A Letter page at **~150 DPI** is about 1275×1650 px, which tiles into roughly 2×3 = 6 crops of 768 px: the
-  model's maximum. Above ~150 DPI the extra pixels are downscaled away unless the page is split.
-- The PIXY at the arm's full height delivers ~150 DPI, which is right at that sweet spot.
-- Sparse pages (receipts, notes, envelopes) can run with fewer crops; dense statements and forms want all 6.
+- **The tile grid follows the page's aspect ratio, not its resolution.** A Letter page gets 2×3 = 6 tiles and is
+  resized to 1536×2304, so a 150 DPI capture is mildly upscaled and detail above ~180–200 DPI is discarded. The
+  PIXY at the arm's full height (~150 DPI) is in the right range.
+- **The tile budget is a speed lever.** Overview only (0 tiles) halves OCR time and stays exact on sparse pages
+  (letters, forms, receipts, bills); dense tabular pages (bank statements) need all 6 tiles.
 
-So the capture station can choose a crop budget per page from the quality stats (text density from tier 0,
-page size from the AprilTag) and record it in the manifest. Phase 0 measures whether that trade-off holds; this
-is a hypothesis until then. The exact tiling rule should be read from the model's preprocessing code, not assumed.
+So Sieve picks a tile budget per page from tier-0 text density and table detection, and records it in the
+manifest.
 
 ### HomeLibrarian: store and schema
 
@@ -146,7 +146,10 @@ is a hypothesis until then. The exact tiling rule should be read from the model'
 ## Phases
 
 **Phase 0: measure on the M1 Mac mini.**
-Run DeepSeek-OCR-2 through mlx-vlm, bf16 and 8-bit, next to Apple Vision. Using non-sensitive test documents
+**Done on a 16 GB M3 laptop, 2026-11-20: see [phase0-results.md](phase0-results.md).** 8-bit DeepSeek-OCR-2 via
+mlx-vlm read every key field exactly at ~5.5 GB peak, 7–16 s/page; Apple Vision is the right tier 0 but silently
+dropped amounts on one page; bf16 still needs a run on the M1 itself. Original plan: run DeepSeek-OCR-2 through
+mlx-vlm, bf16 and 8-bit, next to Apple Vision. Using non-sensitive test documents
 first, compare crop budgets 0/2/4/6 and capture DPI 100/150/200 on: character accuracy against typed ground truth,
 tables kept intact, seconds per page and **peak memory** (on the 16 GB M1 this decides bf16 vs 8-bit, and
 whether the local LLM can stay loaded alongside it). Watch for **repetition loops**: on vLLM they needed the `NGramPerReqLogitsProcessor`, which

@@ -1,0 +1,48 @@
+# SPRINGFIELD ELECTRIC CO-OP
+Customer Service 1-800-555-0177 | Outage line 1-800-555-0190
+
+**Account Number**  
+88-301-4471-02  
+
+**Service Address**  
+100 Example Lane, Springfield  
+
+**Billing Date**  
+10/03/2026  
+
+**Due Date**  
+10/24/2026  
+
+**Meter Number**  
+ZX-55190  
+
+---
+
+## Usage Summary
+
+| Period    | Previous | Current  | kWh Used |
+|---|---|---|---|
+| Sep 02 - Oct 01 | 48,215   | 49,107   | 892    |
+
+---
+
+## Charges
+
+**Basic service charge**  
+$22.00  
+
+**Energy charge 892 kWh @ $0.1105**  
+$98.57  
+
+**Fuel cost adjustment**  
+$6.42  
+
+**State utility tax 4.5%**  
+$5.73  
+
+**Total Amount Due**  
+**$132.72**  
+
+---
+
+Payments received after the due date are subject to a late charge of 1.5% of the unpaid balance. To enroll in AutoPay or paperless billing, visit your online account or call Customer Service.
