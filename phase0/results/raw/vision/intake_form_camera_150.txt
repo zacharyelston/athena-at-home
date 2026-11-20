@@ -1,0 +1,16 @@
+Maple Grove Family Medicine
+New Patient Information Form
+Patient name Riley Sample
+Date of birth 04/17/2015
+Sex F
+Parent or guardian Alex Sample
+Phone (555) 010-4471
+Insurance carrier Harborview Health
+Member ID HHP-77310-02
+Group number G-40115
+Allergies Penicillin
+Current medications None
+Emergency contact Jordan Sample (555) 010-4472
+Reason for visit
+Annual well-child checkup and school sports physical. Mild seasonal allergies in spring.
+Signature: Alex Sample Date: 10/14/2026
