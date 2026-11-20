@@ -15,7 +15,7 @@ here are optimistic for the M1). Code, test generator and raw outputs: [`phase0/
    pages (letter, form, receipt, bill); the dense bank statement needs all 6 tiles. Sieve should choose the budget
    per page.
 4. **bf16 could not run on the dev laptop** (Metal GPU timeout on the first page, at every tile budget) while the
-   machine was carrying ~20 GB of swap from other apps. Not a verdict on the M1 mini, which will run Athena alone;
+   machine was carrying ~20 GB of swap from other apps. Not a verdict on the M1 mini, which will run Athena@Home alone;
    retest there. 8-bit already reads every key field exactly, so bf16 is only worth it if real documents show gaps.
 
 ## Test set
