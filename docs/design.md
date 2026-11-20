@@ -1,8 +1,8 @@
-# Athena: design
+# Athena@Home: design
 
 Status: **draft for discussion**, 2026-11-20.
 
-Athena is a home **capture system**: any camera (or file, or phone) produces page images, one OCR pipeline
+Athena@Home is a home **capture system**: any camera (or file, or phone) produces page images, one OCR pipeline
 reads them, and the results land on a **home server**. It has three parts:
 
 - **Capture stations**: cameras and importers that produce *capture bundles*. The desk camera station grows out
@@ -59,7 +59,7 @@ are exposed directly; the IOKit helper OCRX needed is macOS-only).
 | Vision-token retrieval (DeepEncoder page tokens as a ColPali-style index) | HaberDash branch `claude/deepseekocr2-encoder-retrieval-*` | Hypothesis; synthetic test only |
 | `~/code/DSOCR2` | — | Finance-only scaffold; its "DeepSeek" path calls a text chat API, not the OCR model. Not reused. |
 
-The **Hydra/Ancera NATS hub is work infrastructure**. Athena reuses its *contracts and code*, never its
+The **Hydra/Ancera NATS hub is work infrastructure**. Athena@Home reuses its *contracts and code*, never its
 servers, accounts or GPUs.
 
 ## Architecture
