@@ -1,7 +1,8 @@
 # GNUmon
 
 A home capture system: point any camera at paper (or drop in a file, or snap it with a phone), and GNUmon reads
-it, sorts it and files it on the home NAS, where it stays.
+it, sorts it and files it on home machines (an M1 Mac mini for OCR, a Linux mini for storage and services,
+a NAS at release), where it stays.
 
 ## The name
 
@@ -14,11 +15,11 @@ reads, and keeps a library.
 
 | Part | Job |
 |---|---|
-| **Capture stations** | Cameras and importers that turn paper and files into *capture bundles* (page images, quick OCR, quality stats). The desk camera station is inspired by [OCRX](https://github.com/zacharyelston/OCRX). |
-| **Sieve** | OCR and classification: Apple Vision for an instant pass, DeepSeek-OCR-2 for layout-aware text, a local LLM to pull out type, date, institution, people and amounts. |
-| **HomeLibrarian** | The family-records library on the NAS: write-once originals, full-text search, a review queue, retention reminders. |
+| **Capture stations** | Cameras, iPhones and importers that turn paper and files into *capture bundles* (page images, quality stats, and quick OCR where Apple Vision exists). Runs on macOS, iOS and Linux. The desk camera station is inspired by [OCRX](https://github.com/zacharyelston/OCRX). |
+| **Sieve** | OCR and classification on the M1 Mac mini: Apple Vision for an instant pass, DeepSeek-OCR-2 (MLX) for layout-aware text, a local LLM to pull out type, date, institution, people and amounts. Linux stations rely on it for all OCR. |
+| **HomeLibrarian** | The family-records library (Ubuntu mini now, NAS at release): write-once originals, full-text search, a review queue, retention reminders. |
 
-FamilyFinances consumes the same pipeline as a separate NAS service.
+FamilyFinances consumes the same pipeline as a separate service alongside HomeLibrarian.
 
 **Family records never leave the house**: no cloud OCR APIs, no work infrastructure.
 
