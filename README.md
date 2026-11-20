@@ -1,15 +1,17 @@
-# GNUmon
+# Athena
 
-A home capture system: point any camera at paper (or drop in a file, or snap it with a phone), and GNUmon reads
+A home capture system: point any camera at paper (or drop in a file, or snap it with a phone), and Athena reads
 it, sorts it and files it on home machines (an M1 Mac mini for OCR, a Linux mini for storage and services,
 a NAS at release), where it stays.
 
 ## The name
 
-Around 240 BC Eratosthenes, chief librarian at Alexandria, measured the circumference of the Earth with a
-**gnomon** (a stick and its shadow) and a bit of geometry. He also invented the **sieve** that sorts primes from
-the rest. GNUmon measures pages with a camera and an AprilTag instead of a stick and the sun, sieves what it
-reads, and keeps a library.
+Named by a librarian. **Athena** is the Greek goddess of wisdom and patron of learning, which suits a system whose
+job is to keep a family's records and find them again.
+
+Its parts borrow from **Eratosthenes**, chief librarian at Alexandria around 240 BC. He measured the Earth with a
+stick and its shadow (Athena measures pages with a camera and an AprilTag), and invented the **sieve** that sorts
+primes from the rest (Athena's **Sieve** sorts what it reads).
 
 ## Parts
 
@@ -30,12 +32,10 @@ the phased plan. Phase 0 (measuring Apple Vision vs DeepSeek-OCR-2 on home hardw
 
 ## License
 
-GNUmon is free software: you can redistribute it and/or modify it under the terms of the **GNU General Public
+Athena is free software: you can redistribute it and/or modify it under the terms of the **GNU General Public
 License** as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
 later version. See [COPYING](COPYING).
 
 Source files carry the header `SPDX-License-Identifier: GPL-3.0-or-later`. Dependencies must be GPLv3-compatible
 (OpenCV, NATS, vLLM and pyobjc are Apache-2.0 or MIT, which are); check model-weight licenses separately from code
 licenses.
-
-GNUmon is not part of the GNU Project; the name is a pun on *gnomon*.
