@@ -31,7 +31,9 @@ FamilyFinances consumes the same pipeline as a separate service alongside HomeLi
 ## Status
 
 Design stage. See [docs/design.md](docs/design.md) for the architecture, what's reused from earlier work, and
-the phased plan. Phase 0 (measuring Apple Vision vs DeepSeek-OCR-2 on home hardware) comes first.
+the phased plan. Phase 0 (measuring Apple Vision vs DeepSeek-OCR-2 on home hardware) is done:
+[docs/phase0-results.md](docs/phase0-results.md). The backend plan, derived from myvect and the HaberDash OCR
+workers, is in [docs/backend.md](docs/backend.md).
 
 ## License
 
