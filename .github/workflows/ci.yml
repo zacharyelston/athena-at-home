@@ -28,6 +28,7 @@ jobs:
       - name: SPDX headers
         run: .venv/bin/python scripts/check_spdx.py
       - name: No real records, captures, databases or secrets
+        if: ${{ !cancelled() }}  # report these even when the SPDX step fails
         run: .venv/bin/python scripts/check_no_records.py
 
   tests:
