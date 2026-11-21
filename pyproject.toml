@@ -20,6 +20,8 @@ sieve = [
 ]
 # Client for capture stations and services on any platform (Linux included)
 client = ["nats-py[nkeys]>=2.7"]
+# The library: PostgreSQL (psycopg 3, LGPL-3.0), NATS events, page derivatives
+library = ["psycopg[binary]>=3.2", "nats-py[nkeys]>=2.7", "pillow>=10.0"]
 # Tests on any platform (CI runs Linux with .[client,dev]); MLX and Apple Vision tests skip where unavailable
 dev = ["pytest>=8", "pytest-asyncio>=0.23", "rapidfuzz>=3", "pillow>=10.0", "numpy>=1.26", "opencv-python-headless>=4.9"]
 
@@ -36,6 +38,7 @@ include = ["sieve*", "athena*"]
 
 [tool.setuptools.package-data]
 "athena.bundle" = ["*.schema.json"]
+"athena.library.migrations" = ["*.sql"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

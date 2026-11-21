@@ -3,6 +3,7 @@ import base64
 import contextlib
 import importlib.util
 import io
+import json
 import os
 import platform
 import shutil
@@ -73,8 +74,9 @@ def page_b64():
 
 
 @contextlib.contextmanager
-def nats_server_running(max_payload: int):
-    """A throwaway nats-server on a free port, localhost only. Yields its URL."""
+def nats_server_running(max_payload: int, jetstream: bool = False):
+    """A throwaway nats-server on a free port, localhost only (with JetStream in a temp dir if asked). Yields its
+    URL."""
     exe = shutil.which("nats-server") or "/opt/homebrew/opt/nats-server/bin/nats-server"
     if not os.path.exists(exe):
         pytest.skip("nats-server not installed")
@@ -84,6 +86,8 @@ def nats_server_running(max_payload: int):
     s.close()
     with tempfile.NamedTemporaryFile("w", suffix=".conf", delete=False) as f:
         f.write(f"listen: 127.0.0.1:{port}\nmax_payload: {max_payload}\n")
+        if jetstream:
+            f.write(f"jetstream: {{store_dir: {json.dumps(tempfile.mkdtemp(prefix='js-'))}}}\n")
         conf = f.name
     proc = subprocess.Popen([exe, "-c", conf], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
@@ -106,3 +110,65 @@ def nats_server():
     max_payload = 256 * 1024
     with nats_server_running(max_payload) as url:
         yield url, max_payload
+
+
+# --- PostgreSQL ----------------------------------------------------------------------------------------------
+# Tests that need a database get a fresh one per test. With ATHENA_TEST_DATABASE_URL set (any database on a server
+# the URL's user may create databases on), it's created there; otherwise a throwaway server is started with initdb
+# for the session, the way nats_server_running starts nats-server. Without either, those tests skip.
+
+def _pg_bin(name: str) -> str | None:
+    found = shutil.which(name)
+    if found:
+        return found
+    import glob
+    for pattern in ("/opt/homebrew/opt/postgresql@*/bin/", "/usr/local/opt/postgresql@*/bin/",
+                    "/usr/lib/postgresql/*/bin/"):
+        hits = sorted(glob.glob(pattern + name))
+        if hits:
+            return hits[-1]
+    return None
+
+
+@pytest.fixture(scope="session")
+def pg_admin_url(tmp_path_factory):
+    url = os.environ.get("ATHENA_TEST_DATABASE_URL")
+    if url:
+        yield url
+        return
+    initdb, pg_ctl = _pg_bin("initdb"), _pg_bin("pg_ctl")
+    if not (initdb and pg_ctl):
+        pytest.skip("no PostgreSQL: set ATHENA_TEST_DATABASE_URL or install PostgreSQL (initdb, pg_ctl)")
+    base = tmp_path_factory.mktemp("pg")
+    data = base / "data"
+    subprocess.run([initdb, "-D", str(data), "-U", "athena", "--auth=trust", "-E", "UTF8", "--no-locale"],
+                   check=True, stdout=subprocess.DEVNULL)
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    subprocess.run([pg_ctl, "-D", str(data), "-l", str(base / "log"), "-w", "start", "-o",
+                    f"-p {port} -h 127.0.0.1 -c unix_socket_directories='' -c fsync=off -c full_page_writes=off"],
+                   check=True, stdout=subprocess.DEVNULL)
+    try:
+        yield f"postgresql://athena@127.0.0.1:{port}/postgres"
+    finally:
+        subprocess.run([pg_ctl, "-D", str(data), "-m", "immediate", "stop"], stdout=subprocess.DEVNULL)
+
+
+@pytest.fixture
+def pg_url(pg_admin_url):
+    """A fresh, empty database for one test."""
+    import uuid
+
+    import psycopg
+    from psycopg.conninfo import conninfo_to_dict, make_conninfo
+
+    name = f"athena_test_{uuid.uuid4().hex[:12]}"
+    with psycopg.connect(pg_admin_url, autocommit=True) as conn:
+        conn.execute(f'CREATE DATABASE "{name}"')
+    params = conninfo_to_dict(pg_admin_url)
+    params["dbname"] = name
+    yield make_conninfo(**params)
+    with psycopg.connect(pg_admin_url, autocommit=True) as conn:
+        conn.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')

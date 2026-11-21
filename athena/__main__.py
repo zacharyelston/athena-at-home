@@ -2,6 +2,7 @@
 """Athena@Home command line.
 
   athena bundle validate DIR...   check capture bundles (schema, files, checksums, pages, dates)
+  athena library setup|intake|ingest|ocr|search|publish-events|status
 """
 from __future__ import annotations
 
@@ -48,6 +49,9 @@ def main(argv=None) -> int:
     v.add_argument("--types", help="known item type slugs, comma-separated (others are warnings)")
     v.add_argument("--json", action="store_true", help="print results as JSON")
     v.set_defaults(func=_bundle_validate)
+
+    from .library.cli import add_parser as add_library
+    add_library(sub)
 
     args = ap.parse_args(argv)
     return args.func(args)

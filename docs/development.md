@@ -4,7 +4,7 @@
 
 ```bash
 uv venv --python 3.12 .venv
-uv pip install --python .venv/bin/python -e ".[client,dev]"          # any platform
+uv pip install --python .venv/bin/python -e ".[client,library,dev]"  # any platform
 uv pip install --python .venv/bin/python -e ".[sieve,client,dev]"    # Apple Silicon: adds MLX and Apple Vision
 brew install nats-server                                             # or a release binary on Linux
 ```
@@ -24,6 +24,9 @@ Markers (registered in `pyproject.toml`, applied in `tests/conftest.py`):
 | `mlx` | macOS on Apple Silicon with `mlx-vlm` installed |
 | `macos` | macOS with Apple Vision (`pyobjc-framework-Vision`) |
 | `e2e` | `SIEVE_E2E=1`, the model downloaded and the Phase 0 pages rendered |
+
+Library tests need PostgreSQL: they start a throwaway server with `initdb` (Homebrew's `postgresql@14` or later on a
+Mac, the `postgresql` package on Linux), or use `ATHENA_TEST_DATABASE_URL` if it's set, and skip otherwise.
 
 Tests that need neither use fakes (`FakeEngine`, canned tier-0 lines) and run everywhere, including CI.
 
