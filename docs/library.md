@@ -67,7 +67,8 @@ athena library status                 # health check: exit 1 if the database is 
    events**. An unknown series files the item as unsorted, with a warning.
 4. The bundle moves to `intake/ingested/`. Ingesting it again is a no-op.
 
-Everything enters **private** (collections are private; series, items and pages inherit).
+Everything enters **private** (collections are private; series, items and pages inherit). Choosing
+audiences is [visibility.md](visibility.md).
 
 ## Provenance
 
@@ -91,5 +92,5 @@ machine with the pilot's pages (D06).
 
 ## Not yet
 
-`ocr.jobs` (D09) replaces `library ocr` for overnight runs; visibility logic (D11); the review UI (D13); backups and
+`ocr.jobs` (D09) replaces `library ocr` for overnight runs; the review UI (D13); backups and
 `verify` (D17); vector search and the entity graph (later, in the same database).

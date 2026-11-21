@@ -30,6 +30,22 @@ def add_parser(sub) -> None:
     p = cmd("publish-events", _publish, "publish the outbox to library.events on NATS")
     p.add_argument("--watch", type=float, metavar="SECONDS", help="keep publishing every SECONDS")
     cmd("status", _status, "check the database is reachable and show counts (exit 1 if not)")
+    p = cmd("explain", _explain, "an item's effective visibility, why, and the feeds it goes to")
+    p.add_argument("item")
+    p.add_argument("--today", help="decide as of this date (YYYY-MM-DD), e.g. to see a rights cutoff move")
+    p = cmd("set-visibility", _set_visibility, "set a collection, series, item or page to a tier (or inherit)")
+    p.add_argument("kind", choices=["collection", "series", "item", "page"])
+    p.add_argument("id")
+    p.add_argument("tier", choices=["private", "members", "public", "inherit"])
+    p.add_argument("--as", dest="who", required=True, help="your login (recorded with the change)")
+    p.add_argument("--why", default="", help="the reason (required when widening)")
+    p = cmd("reviews", _reviews, "widened settings waiting for a second look")
+    p.add_argument("--confirm", type=int, metavar="ID")
+    p.add_argument("--as", dest="who")
+    p = cmd("check-policies", _check_policies,
+            "preview what a changed library.toml's policies would do, before applying it")
+    p.add_argument("new_config")
+    p.add_argument("--today")
 
 
 def _lib(args):
@@ -131,4 +147,76 @@ def _status(args) -> int:
         print(f"library {lib.name}: database unreachable: {type(e).__name__}", file=sys.stderr)
         return 1
     print(f"library {lib.name}: " + ", ".join(f"{k} {v}" for k, v in counts.items()))
+    return 0
+
+
+def _today(args):
+    from datetime import date
+
+    return date.fromisoformat(args.today) if getattr(args, "today", None) else date.today()
+
+
+def _explain(args) -> int:
+    from athena.visibility.library import decide_item
+
+    lib = _lib(args)
+    with lib.connect() as conn:
+        d = decide_item(conn, lib.cfg, args.item, _today(args))
+    print(f"item {args.item}: {d.item.tier}")
+    print("  " + d.item.explain())
+    if d.item.cutoff_year:
+        print(f"  public-domain cutoff used: published in or before {d.item.cutoff_year}")
+    print(f"  feeds: {', '.join(d.feeds) or 'none'}")
+    for page_id, pd in d.pages.items():
+        if pd.tier != d.item.tier:
+            print(f"  page {page_id}: {pd.tier}")
+    return 0
+
+
+def _set_visibility(args) -> int:
+    from athena.visibility.library import set_visibility
+
+    lib = _lib(args)
+    tier = None if args.tier == "inherit" else args.tier
+    try:
+        with lib.connect() as conn:
+            r = set_visibility(conn, lib.name, args.kind, args.id, tier, args.who, args.why)
+    except (ValueError, KeyError) as e:
+        print(f"refused: {e}", file=sys.stderr)
+        return 1
+    note = f"; widened, waiting for review #{r['review']}" if r["widened"] else ""
+    print(f"{args.kind} {args.id}: {r['before']} -> {r['after']}{note}")
+    return 0
+
+
+def _reviews(args) -> int:
+    from athena.visibility.library import confirm_review, open_reviews
+
+    lib = _lib(args)
+    with lib.connect() as conn:
+        if args.confirm is not None:
+            if not args.who:
+                print("say who is confirming: --as LOGIN", file=sys.stderr)
+                return 2
+            confirm_review(conn, args.confirm, args.who)
+            print(f"review {args.confirm} confirmed")
+            return 0
+        for r in open_reviews(conn):
+            v = r["value"]
+            print(f"#{r['id']}  {r['subject_type']} {r['subject_id']}: {v['before']} -> {v['after']}  "
+                  f"by {r['source']}: {v['why']}")
+    return 0
+
+
+def _check_policies(args) -> int:
+    from .config import load
+    from athena.visibility.library import preview_policies
+
+    lib = _lib(args)
+    new = load(args.new_config)
+    with lib.connect() as conn:
+        p = preview_policies(conn, list(lib.cfg.policies), list(new.policies), _today(args))
+    print(p.summary())
+    for c in p.changes:
+        print(f"  {c.item}: {c.before} -> {c.after}")
     return 0

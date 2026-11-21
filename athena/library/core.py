@@ -38,7 +38,10 @@ class Library:
         """Create directories, apply migrations and seed the arrangement. Safe to run at every start."""
         for d in (self.cfg.files, self.cfg.intake, self.cfg.intake / INGESTED, self.cfg.intake / REJECTED):
             d.mkdir(parents=True, exist_ok=True)
+        from athena.visibility.library import sync_policies
+
         with self.connect() as conn:
             applied = db.migrate(conn)
             db.seed(conn, self.cfg)
+            sync_policies(conn, self.cfg)
         return applied

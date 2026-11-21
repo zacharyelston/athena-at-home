@@ -3,6 +3,7 @@
 
   athena bundle validate DIR...   check capture bundles (schema, files, checksums, pages, dates)
   athena library setup|intake|ingest|ocr|search|publish-events|status
+  athena library explain|set-visibility|reviews|check-policies
 """
 from __future__ import annotations
 

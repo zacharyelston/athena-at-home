@@ -22,6 +22,8 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from athena.visibility.core import Feed, Policy, PolicyError
+
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 
 
@@ -62,6 +64,8 @@ class LibraryConfig:
     ocr_skip_kinds: tuple[str, ...] = ("photo", "blank")
     ocr_derivative_ppi: int = 200
     ocr_max_edge: int = 2400       # cap for pages whose ppi is unknown (Letter at ~200 ppi is 1700 × 2200)
+    policies: tuple[Policy, ...] = ()
+    feeds: tuple[Feed, ...] = ()
     source_path: Path | None = field(default=None, compare=False)
 
     @property
@@ -97,7 +101,7 @@ def load(path: str | Path | None = None, env: dict | None = None) -> LibraryConf
 def from_dict(raw: dict, env: dict | None = None, source_path: Path | None = None) -> LibraryConfig:
     env = os.environ if env is None else env
     lib = raw.get("library") or {}
-    unknown = set(raw) - {"library", "collection", "series", "vocabulary", "ocr", "nats"}
+    unknown = set(raw) - {"library", "collection", "series", "vocabulary", "ocr", "nats", "policy", "feed"}
     if unknown:
         raise ConfigError(f"unknown config sections: {sorted(unknown)}")
     name = _slug(lib.get("name"), "library.name")
@@ -128,6 +132,14 @@ def from_dict(raw: dict, env: dict | None = None, source_path: Path | None = Non
         raise ConfigError("series slugs must be unique")
     types = tuple(_slug(t, "vocabulary.types entry") for t in (raw.get("vocabulary") or {}).get("types", []))
     ocr = raw.get("ocr") or {}
+    try:
+        policies = tuple(Policy.from_dict(p) for p in raw.get("policy", []))
+        feeds = tuple(Feed.from_dict(f) for f in raw.get("feed", []))
+    except PolicyError as e:
+        raise ConfigError(str(e)) from None
+    for what, names in (("policy", [p.name for p in policies]), ("feed", [f.name for f in feeds])):
+        if len(set(names)) != len(names):
+            raise ConfigError(f"{what} names must be unique")
     return LibraryConfig(
         name=name, database_url=database_url, files=files, intake=intake,
         collections=collections, series=tuple(series), types=types,
@@ -137,5 +149,6 @@ def from_dict(raw: dict, env: dict | None = None, source_path: Path | None = Non
         ocr_skip_kinds=tuple(ocr.get("skip_kinds", ("photo", "blank"))),
         ocr_derivative_ppi=int(ocr.get("derivative_ppi", 200)),
         ocr_max_edge=int(ocr.get("max_edge", 2400)),
+        policies=policies, feeds=feeds,
         source_path=source_path,
     )
