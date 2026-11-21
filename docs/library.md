@@ -92,5 +92,5 @@ machine with the pilot's pages (D06).
 
 ## Not yet
 
-`ocr.jobs` (D09) replaces `library ocr` for overnight runs; the review UI (D13); backups and
+`ocr.jobs` (D09) replaces `library ocr` for overnight runs; the review UI (D13); the static site (D16); backups and
 `verify` (D17); vector search and the entity graph (later, in the same database).

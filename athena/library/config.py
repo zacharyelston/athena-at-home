@@ -46,6 +46,24 @@ class Series:
     title: str
     description: str = ""
     sort: int = 0
+    rights: str = ""        # the rights statement feeds show for this series' items (the owner's choice)
+
+
+# Item fields a feed may carry. Notes and physical location stay in the library unless a deployment adds them.
+PUBLISHABLE_FIELDS = ("title", "date", "type", "creator", "tags", "language", "physical", "notes")
+DEFAULT_FEED_FIELDS = ("title", "date", "type", "creator", "tags", "language")
+
+
+@dataclass(frozen=True)
+class PublishConfig:
+    thumb: int = 300                 # long-edge caps, in pixels
+    web: int = 1600
+    zoom: int = 3200
+    max_fraction: float = 0.9        # no feed image exceeds this fraction of the page image's long edge
+    jpeg_quality: int = 85
+    redaction_margin: float = 0.004  # rectangles grow by this fraction of the long edge before burn-in
+    fields: tuple[str, ...] = DEFAULT_FEED_FIELDS
+    rights_default: str = ""
 
 
 @dataclass(frozen=True)
@@ -66,6 +84,7 @@ class LibraryConfig:
     ocr_max_edge: int = 2400       # cap for pages whose ppi is unknown (Letter at ~200 ppi is 1700 × 2200)
     policies: tuple[Policy, ...] = ()
     feeds: tuple[Feed, ...] = ()
+    publish: PublishConfig = PublishConfig()
     source_path: Path | None = field(default=None, compare=False)
 
     @property
@@ -98,10 +117,35 @@ def load(path: str | Path | None = None, env: dict | None = None) -> LibraryConf
     return from_dict(raw, env, source_path=path)
 
 
+def _publish(d: dict) -> PublishConfig:
+    unknown = set(d) - set(PublishConfig.__dataclass_fields__)
+    if unknown:
+        raise ConfigError(f"[publish]: unknown keys {sorted(unknown)}")
+    fields = tuple(d.get("fields", DEFAULT_FEED_FIELDS))
+    bad = set(fields) - set(PUBLISHABLE_FIELDS)
+    if bad:
+        raise ConfigError(f"[publish] fields: {sorted(bad)} can't be published; choose from {PUBLISHABLE_FIELDS}")
+    try:
+        cfg = PublishConfig(thumb=int(d.get("thumb", 300)), web=int(d.get("web", 1600)), zoom=int(d.get("zoom", 3200)),
+                            max_fraction=float(d.get("max_fraction", 0.9)),
+                            jpeg_quality=int(d.get("jpeg_quality", 85)),
+                            redaction_margin=float(d.get("redaction_margin", 0.004)), fields=fields,
+                            rights_default=str(d.get("rights_default", "")))
+    except (TypeError, ValueError) as e:
+        raise ConfigError(f"[publish]: {e}") from None
+    if not (0 < cfg.thumb <= cfg.web <= cfg.zoom):
+        raise ConfigError("[publish]: sizes must satisfy thumb <= web <= zoom")
+    if not (0 < cfg.max_fraction < 1):
+        raise ConfigError("[publish]: max_fraction must be between 0 and 1, so no feed image is a full-size copy")
+    if not (0 <= cfg.redaction_margin <= 0.05) or not (1 <= cfg.jpeg_quality <= 95):
+        raise ConfigError("[publish]: redaction_margin must be 0 to 0.05 and jpeg_quality 1 to 95")
+    return cfg
+
+
 def from_dict(raw: dict, env: dict | None = None, source_path: Path | None = None) -> LibraryConfig:
     env = os.environ if env is None else env
     lib = raw.get("library") or {}
-    unknown = set(raw) - {"library", "collection", "series", "vocabulary", "ocr", "nats", "policy", "feed"}
+    unknown = set(raw) - {"library", "collection", "series", "vocabulary", "ocr", "nats", "policy", "feed", "publish"}
     if unknown:
         raise ConfigError(f"unknown config sections: {sorted(unknown)}")
     name = _slug(lib.get("name"), "library.name")
@@ -127,7 +171,8 @@ def from_dict(raw: dict, env: dict | None = None, source_path: Path | None = Non
         coll = _slug(s.get("collection"), f"series {slug}: collection")
         if coll not in known:
             raise ConfigError(f"series {slug!r} names unknown collection {coll!r}")
-        series.append(Series(slug, coll, s.get("title") or slug, s.get("description", ""), int(s.get("sort", 0))))
+        series.append(Series(slug, coll, s.get("title") or slug, s.get("description", ""), int(s.get("sort", 0)),
+                             str(s.get("rights", ""))))
     if len({s.slug for s in series}) != len(series):
         raise ConfigError("series slugs must be unique")
     types = tuple(_slug(t, "vocabulary.types entry") for t in (raw.get("vocabulary") or {}).get("types", []))
@@ -137,6 +182,7 @@ def from_dict(raw: dict, env: dict | None = None, source_path: Path | None = Non
         feeds = tuple(Feed.from_dict(f) for f in raw.get("feed", []))
     except PolicyError as e:
         raise ConfigError(str(e)) from None
+    publish = _publish(raw.get("publish") or {})
     for what, names in (("policy", [p.name for p in policies]), ("feed", [f.name for f in feeds])):
         if len(set(names)) != len(names):
             raise ConfigError(f"{what} names must be unique")
@@ -149,6 +195,6 @@ def from_dict(raw: dict, env: dict | None = None, source_path: Path | None = Non
         ocr_skip_kinds=tuple(ocr.get("skip_kinds", ("photo", "blank"))),
         ocr_derivative_ppi=int(ocr.get("derivative_ppi", 200)),
         ocr_max_edge=int(ocr.get("max_edge", 2400)),
-        policies=policies, feeds=feeds,
+        policies=policies, feeds=feeds, publish=publish,
         source_path=source_path,
     )

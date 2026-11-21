@@ -4,6 +4,7 @@
   athena bundle validate DIR...   check capture bundles (schema, files, checksums, pages, dates)
   athena library setup|intake|ingest|ocr|search|publish-events|status
   athena library explain|set-visibility|reviews|check-policies
+  athena publish build|check|diff
 """
 from __future__ import annotations
 
@@ -52,7 +53,9 @@ def main(argv=None) -> int:
     v.set_defaults(func=_bundle_validate)
 
     from .library.cli import add_parser as add_library
+    from .publish.cli import add_parser as add_publish
     add_library(sub)
+    add_publish(sub)
 
     args = ap.parse_args(argv)
     return args.func(args)

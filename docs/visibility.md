@@ -99,7 +99,7 @@ name = "members"
 tiers = ["public", "members"]
 ```
 
-No feed carries private material. The publisher (D15) builds each feed from these definitions.
+No feed carries private material. The publisher builds each feed from these definitions ([publisher.md](publisher.md)).
 
 ## Using it
 

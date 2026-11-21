@@ -131,3 +131,49 @@ def is_valid(text: str) -> bool:
         return True
     except EdtfError:
         return False
+
+
+_MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+           "November", "December")
+_SEASON_NAMES = {21: "spring", 22: "summer", 23: "autumn", 24: "winter"}
+
+
+def _display_single(body: str) -> str:
+    m = _SINGLE.match(body)
+    ys, ms, ds = m.group("year"), m.group("month"), m.group("day")
+    if ys.endswith("XX"):
+        return f"{ys[:2]}00s"
+    if ys.endswith("X"):
+        return f"{ys[:3]}0s"
+    if ms is None or ms == "XX":
+        return ys
+    mo = int(ms)
+    if mo in _SEASON_NAMES:
+        return f"{_SEASON_NAMES[mo]} {ys}"
+    if ds is None or ds == "XX":
+        return f"{_MONTHS[mo - 1]} {ys}"
+    return f"{_MONTHS[mo - 1]} {int(ds)}, {ys}"
+
+
+def _display_part(part: str) -> str:
+    body, approx, unsure = _qualified(part)
+    text = _display_single(body)
+    if approx:
+        text = f"circa {text}"
+    return f"{text}?" if unsure else text
+
+
+def display(text: str | None) -> str:
+    """A date as a reader would write it: "April 1962", "spring 1962", "circa 1958", "1960s", "1960–1965"."""
+    if not text:
+        return "undated"
+    parse(text)  # raises on a bad date
+    raw = text.strip()
+    if "/" not in raw:
+        return _display_part(raw)
+    start, end = raw.split("/")
+    if start in ("", ".."):
+        return f"until {_display_part(end)}" if start == ".." else f"before or in {_display_part(end)}"
+    if end in ("", ".."):
+        return f"from {_display_part(start)}"
+    return f"{_display_part(start)}–{_display_part(end)}"
