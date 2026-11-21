@@ -90,19 +90,25 @@ on the M1. Its MCP name is `athena`, so it can't be confused with the work `myve
 
 ## Build order
 
+Revised 2026-11-20 for the first deployment, the Branford Garden Club archive
+([epic](epics/garden-club-archive/README.md#change-to-the-build-order)): capture moves ahead of the library,
+visibility and the publisher come before extraction, and the search service waits.
+
 1. **Sieve on the M1**: derive the workers, MLX in process, `ocr.page` first. Check it against the Phase 0 set.
-2. **Home NATS on the Ubuntu mini**: nsc operator and accounts (`CAPTURE`, `OCR`, `LIBRARY`, `FINANCE`), systemd
-   service, TLS.
-3. **athena-library MVP**: bundle intake from a share, originals store, SQLite + FTS5, `library.events`, the
-   portal's visibility fields and policies in the schema from the start, and libraries as named instances (own
-   data directory, config and address), so one machine can run several.
-4. **Search service**: derive from myvect, index the library's text, first search page combining FTS5 and vectors.
-5. **Capture**: OCRX "Send to library" writes bundles; a Linux station sends pages through `ocr.page`.
+2. **Home NATS on the Ubuntu mini**: nsc operator and accounts (per deployment: `CAPTURE`, `OCR`, `LIBRARY`, and
+   `FINANCE` for a household), systemd service, TLS, JetStream.
+3. **Capture bundle spec and a capture tool**: archival description (collection → series → item → page); a folder
+   importer for iPhone, flatbed and desk-camera images. OCRX's "Send to library" and a Linux station come later.
+4. **athena-library MVP**: bundle intake, originals store, SQLite + FTS5, `library.events`, the portal's visibility
+   fields and policies in the schema from the start, and libraries as named instances (own data directory, config
+   and address), so one machine can run several. `ocr.jobs` alongside it.
+5. **Review UI**: metadata, OCR checks, visibility choices and redaction.
 6. **Publisher and static site**: feeds built from a library and a static site with per-tier search; first
    needed for the Branford Garden Club archive. Library-to-library feeds (a guest library, a car) follow.
-7. **Extraction and review queue**: tier-2 fields, confidence thresholds, confirm-and-lock.
-8. **athena-mcp**: read-only, gated by visibility tier.
-9. **Live portal** with member logins.
+7. **Search service**: derive from myvect, index the library's text, search combining FTS5 and vectors.
+8. **Extraction and review queue thresholds**: tier-2 fields, confidence thresholds, confirm-and-lock.
+9. **athena-mcp**: read-only, gated by visibility tier.
+10. **Live portal** with member logins.
 
 ## Notes
 
