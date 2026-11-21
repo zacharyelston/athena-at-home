@@ -20,6 +20,8 @@ DOCS = ["bank_statement", "utility_bill", "insurance_letter", "receipt", "intake
 
 pytestmark = [
     pytest.mark.e2e,
+    pytest.mark.mlx,
+    pytest.mark.macos,
     pytest.mark.skipif(os.environ.get("SIEVE_E2E") != "1", reason="set SIEVE_E2E=1 to run (slow, needs the model)"),
     pytest.mark.skipif(not TESTSET.exists(), reason="render phase0/testset first (phase0/gen_testset.py)"),
 ]

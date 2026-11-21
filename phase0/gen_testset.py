@@ -6,7 +6,7 @@ benchmark DPIs in two conditions:
   clean   resampled only (a flatbed-like scan)
   camera  mild blur, uneven light, sensor noise and JPEG, roughly what a deskewed camera capture looks like
 
-Output: testset/<doc>/{gt.txt, fields.json, <cond>_<dpi>.png|jpg}
+Output: testset/<doc>/{gt.txt, fields.json, <cond>_<dpi>.png|jpg} (or $TESTSET_OUT/<doc>/…)
 """
 import json
 import os
@@ -21,22 +21,39 @@ W, H = int(8.5 * MASTER_DPI), int(11 * MASTER_DPI)
 DPIS = [100, 150, 200]
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "testset")
 
+# Each style lists (path, ttc index) candidates: macOS system fonts first, then metric-compatible Linux fonts
+# (fonts-liberation, fonts-dejavu-core), so the fixtures render in CI. Ground truth doesn't depend on the font.
+_MAC = "/System/Library/Fonts"
+_LIB = "/usr/share/fonts/truetype/liberation"
+_DJV = "/usr/share/fonts/truetype/dejavu"
 FONTS = {
-    "sans": "/System/Library/Fonts/Helvetica.ttc",
-    "serif": "/System/Library/Fonts/Supplemental/Times New Roman.ttf",
-    "mono": "/System/Library/Fonts/Supplemental/Courier New.ttf",
-    "arial": "/System/Library/Fonts/Supplemental/Arial.ttf",
-    "georgia": "/System/Library/Fonts/Supplemental/Georgia.ttf",
+    ("sans", False): [(f"{_MAC}/Helvetica.ttc", 0), (f"{_LIB}/LiberationSans-Regular.ttf", 0), (f"{_DJV}/DejaVuSans.ttf", 0)],
+    ("sans", True): [(f"{_MAC}/Helvetica.ttc", 1), (f"{_LIB}/LiberationSans-Bold.ttf", 0), (f"{_DJV}/DejaVuSans-Bold.ttf", 0)],
+    ("arial", False): [(f"{_MAC}/Supplemental/Arial.ttf", 0), (f"{_LIB}/LiberationSans-Regular.ttf", 0),
+                       (f"{_DJV}/DejaVuSans.ttf", 0)],
+    ("arial", True): [(f"{_MAC}/Supplemental/Arial Bold.ttf", 0), (f"{_LIB}/LiberationSans-Bold.ttf", 0),
+                      (f"{_DJV}/DejaVuSans-Bold.ttf", 0)],
+    ("serif", False): [(f"{_MAC}/Supplemental/Times New Roman.ttf", 0), (f"{_LIB}/LiberationSerif-Regular.ttf", 0),
+                       (f"{_DJV}/DejaVuSerif.ttf", 0)],
+    ("mono", False): [(f"{_MAC}/Supplemental/Courier New.ttf", 0), (f"{_LIB}/LiberationMono-Regular.ttf", 0),
+                      (f"{_DJV}/DejaVuSansMono.ttf", 0)],
+    ("georgia", False): [(f"{_MAC}/Supplemental/Georgia.ttf", 0), (f"{_LIB}/LiberationSerif-Regular.ttf", 0),
+                         (f"{_DJV}/DejaVuSerif.ttf", 0)],
 }
 
 
+def font_path(name, bold=False):
+    """The first installed font for a style, as (path, ttc index). Bold falls back to regular if no bold exists."""
+    for key in ((name, bold), (name, False)):
+        for path, index in FONTS.get(key, []):
+            if os.path.exists(path):
+                return path, index
+    raise FileNotFoundError(f"no font installed for {name!r} (bold={bold}); on Linux install fonts-liberation")
+
+
 def font(name, pt, bold=False):
-    path = FONTS[name]
-    if path.endswith(".ttc"):
-        return ImageFont.truetype(path, int(pt * MASTER_DPI / 72), index=1 if bold else 0)
-    if bold and name == "arial":
-        path = "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
-    return ImageFont.truetype(path, int(pt * MASTER_DPI / 72))
+    path, index = font_path(name, bold)
+    return ImageFont.truetype(path, int(pt * MASTER_DPI / 72), index=index)
 
 
 class Page:
@@ -310,11 +327,12 @@ def camera_degrade(img, rng):
     return np.clip(a, 0, 255).astype(np.uint8)
 
 
-def main():
+def main(out=None):
+    out = out or os.environ.get("TESTSET_OUT") or OUT
     rng = np.random.default_rng(11)
     for name, fn in DOCS.items():
         p = fn()
-        d = os.path.join(OUT, name)
+        d = os.path.join(out, name)
         os.makedirs(d, exist_ok=True)
         with open(os.path.join(d, "gt.txt"), "w") as fh:
             fh.write("\n".join(p.lines) + "\n")

@@ -81,7 +81,7 @@ Thresholds are in `sieve/tiles.py` and were calibrated on the synthetic Phase 0 
 ## Tests
 
 ```bash
-.venv/bin/python -m pytest                     # 31 tests: policy, contract, NATS worker + client (fake model)
+.venv/bin/python -m pytest                     # policy, contract, NATS worker + client (fake model); see development.md
 SIEVE_E2E=1 .venv/bin/python -m pytest -m e2e -s   # real model over NATS on the Phase 0 pages
 ```
 

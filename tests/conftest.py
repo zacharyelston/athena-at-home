@@ -1,11 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import base64
 import contextlib
+import importlib.util
 import io
 import os
+import platform
 import shutil
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -14,6 +17,28 @@ from PIL import Image
 
 from sieve.engine import OcrResult
 from sieve.tier0 import Line
+
+
+def _have(module: str) -> bool:
+    try:
+        return importlib.util.find_spec(module) is not None
+    except (ImportError, ValueError):
+        return False
+
+
+HAVE_MLX = sys.platform == "darwin" and platform.machine() == "arm64" and _have("mlx_vlm")
+HAVE_VISION = sys.platform == "darwin" and _have("Vision")
+
+
+def pytest_collection_modifyitems(config, items):
+    """Tests marked mlx or macos skip, with a reason, where the platform or its packages are missing."""
+    skip_mlx = pytest.mark.skip(reason="needs Apple Silicon with mlx-vlm (pip install -e '.[sieve]')")
+    skip_vision = pytest.mark.skip(reason="needs macOS with Apple Vision (pyobjc-framework-Vision)")
+    for item in items:
+        if "mlx" in item.keywords and not HAVE_MLX:
+            item.add_marker(skip_mlx)
+        if "macos" in item.keywords and not HAVE_VISION:
+            item.add_marker(skip_vision)
 
 
 class FakeEngine:

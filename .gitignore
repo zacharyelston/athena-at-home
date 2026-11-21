@@ -2,11 +2,12 @@
 __pycache__/
 *.log
 .DS_Store
-# never commit real documents or captures
-captures/
-library/
-originals/
-scans/
+# never commit real documents or captures (anchored to the repo root, so code packages such as
+# athena/library/ aren't ignored; scripts/check_no_records.py catches data anywhere else)
+/captures/
+/library/
+/originals/
+/scans/
 *.sqlite
 *.db
 .env

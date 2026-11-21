@@ -11,6 +11,7 @@ SIEVE_NATS_TLS_HOSTNAME, SIEVE_SUBJECT (ocr.page), SIEVE_QUEUE (sieve), SIEVE_MO
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import json
 import os
 import signal
@@ -30,13 +31,11 @@ DEFAULTS = {
 
 
 def _tier0_fn():
-    if sys.platform != "darwin":
+    """Apple Vision if this machine has it: macOS with pyobjc's Vision bindings installed."""
+    if sys.platform != "darwin" or importlib.util.find_spec("Vision") is None:
         return None
-    try:
-        from . import tier0
-        return tier0.recognize
-    except ImportError:
-        return None
+    from . import tier0
+    return tier0.recognize
 
 
 async def serve(nats_url: str, subject: str, queue: str, model: str, creds: str | None = None,

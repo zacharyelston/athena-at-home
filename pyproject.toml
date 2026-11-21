@@ -19,7 +19,8 @@ sieve = [
 ]
 # Client for capture stations and services on any platform (Linux included)
 client = ["nats-py[nkeys]>=2.7"]
-dev = ["pytest>=8", "pytest-asyncio>=0.23", "rapidfuzz>=3"]
+# Tests on any platform (CI runs Linux with .[client,dev]); MLX and Apple Vision tests skip where unavailable
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "rapidfuzz>=3", "pillow>=10.0", "numpy>=1.26", "opencv-python-headless>=4.9"]
 
 [project.scripts]
 sieve = "sieve.__main__:main"
@@ -35,4 +36,8 @@ packages = ["sieve"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-markers = ["e2e: needs nats-server and the DeepSeek-OCR-2 model (slow)"]
+markers = [
+    "e2e: needs nats-server and the DeepSeek-OCR-2 model (slow; also set SIEVE_E2E=1)",
+    "mlx: needs Apple Silicon with mlx-vlm installed (skipped elsewhere)",
+    "macos: needs Apple Vision through pyobjc (skipped elsewhere)",
+]

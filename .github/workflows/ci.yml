@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Tests on Linux (MLX and Apple Vision tests skip there), plus the SPDX and no-real-records guards.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NATS_SERVER_VERSION: v2.15.3
+
+jobs:
+  guards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+      - name: Pillow for the EXIF check
+        run: uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python "pillow>=10.0"
+      - name: SPDX headers
+        run: .venv/bin/python scripts/check_spdx.py
+      - name: No real records, captures, databases or secrets
+        run: .venv/bin/python scripts/check_no_records.py
+
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+      - name: Fonts for the synthetic test set
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-liberation fonts-dejavu-core
+      - name: nats-server (pinned, checksum verified)
+        run: |
+          base="https://github.com/nats-io/nats-server/releases/download/${NATS_SERVER_VERSION}"
+          tarball="nats-server-${NATS_SERVER_VERSION}-linux-amd64.tar.gz"
+          cd "$RUNNER_TEMP"
+          curl -fsSLO "$base/$tarball" -O "$base/SHA256SUMS"
+          grep " ${tarball}\$" SHA256SUMS | sha256sum -c -
+          tar xzf "$tarball"
+          sudo install "nats-server-${NATS_SERVER_VERSION}-linux-amd64/nats-server" /usr/local/bin/
+          nats-server --version
+      - name: Install (client and dev extras; the sieve extra is Apple Silicon only)
+        run: |
+          uv venv --python ${{ matrix.python }} .venv
+          uv pip install --python .venv/bin/python -e ".[client,dev]"
+      - name: Tests
+        run: .venv/bin/python -m pytest -m "not e2e" -rs
