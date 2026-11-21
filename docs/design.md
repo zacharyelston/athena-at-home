@@ -2,18 +2,45 @@
 
 Status: **draft for discussion**, 2026-11-20.
 
-Athena@Home is a home **capture system**: any camera (or file, or phone) produces page images, one OCR pipeline
-reads them, and the results land on a **home server**. It has three parts:
+Athena@Home is a **capture and records system** built from core modules: any camera (or file, or phone) produces
+page images, one OCR pipeline reads them, and the results land in one or more **libraries** on the owner's
+machines. The modules:
 
 - **Capture stations**: cameras and importers that produce *capture bundles*. The desk camera station grows out
   of [OCRX](https://github.com/zacharyelston/OCRX), which is inspiration, not a dependency.
 - **Sieve**: the OCR and classification pipeline (a fast local pass, then DeepSeek-OCR-2 and a local LLM).
-- **HomeLibrarian**: the family-records library: store, search, review queue, retention.
+- **Library** (HomeLibrarian in a household): store, search, review queue, retention, visibility.
+- **Publisher and portal**: feeds from one library to another library or to a website, on the owner's terms
+  ([portal.md](portal.md)).
 
 FamilyFinances is a second consumer of the same pipeline and will also run on the home server as a background
 service.
 
-## Platform
+## Core modules, composed per deployment
+
+Nothing in the modules assumes a household. A **deployment** decides how many libraries it runs, where each one
+lives on the network, what each holds, and which feeds connect them. The same modules cover, for example:
+
+| Deployment | Libraries |
+|---|---|
+| **Household** | a private library on the home LAN; a guest library on the guest wifi (wifi details, house rules, what's nearby) fed from it |
+| **Car** | a small offline library in the car (owner's manual, repair guide, its settings, the registration and insurance cards it must carry), synced from the home library when the car is home |
+| **Club** (the Branford Garden Club) | the archivist's private library; a public site and a members site fed from it |
+| **Library or company** | a staff library; a public catalog portal fed from it |
+
+Rules for the modules that follow from this:
+
+- A library is a **named instance** with its own data directory, config and network address; any number can run
+  on one machine, and none assumes which network it's on.
+- Names such as `family`, `home` or a hostname are **configuration defaults**, never hardcoded.
+- Libraries share only through **feeds** built by the publisher (filtered, redacted, logged); a receiving library
+  never reads another library's store.
+- Services that are shared by a site (NATS, Sieve) are addressed by configuration, so a car library that is offline
+  simply queues its OCR until it's back on the home network.
+
+The platform below is **one deployment**: the author's household.
+
+## Platform (reference deployment: the author's household)
 
 The home hardware, and what each machine does. The NAS is defined at release; until then nothing may assume
 NAS-only features. Because the store is content-addressed and every service talks over NATS, moving the
@@ -35,8 +62,12 @@ are exposed directly; the IOKit helper OCRX needed is macOS-only).
 
 ## Principles
 
-1. **Family records stay in the house.** Tax returns, Social Security statements, loans and medical papers never
-   go to a cloud API and never travel over work infrastructure. Every component here runs on home hardware.
+1. **Private by default, published by choice.** Nothing leaves the owner's machines unless the owner publishes it.
+   Processing (OCR, extraction, search) never uses a cloud API or anyone else's infrastructure. What a deployment
+   makes public is its decision, made explicitly per collection through the [portal](portal.md): a household
+   keeps its records private (tax returns, Social Security statements and medical papers stay home) but might
+   share a guest page on the home network, while a library, a club or a company can run public and private sides
+   from the same archive.
 2. **Capture anywhere, store once.** Any capture source produces the same *capture bundle*; the home server keeps one
    immutable original per document, addressed by content hash.
 3. **Two OCR passes, not one.** A fast local pass at capture time (quality check, instant search), and a

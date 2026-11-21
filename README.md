@@ -21,17 +21,24 @@ primes from the rest (its **Sieve** sorts what it reads).
 | Part | Job |
 |---|---|
 | **Capture stations** | Cameras, iPhones and importers that turn paper and files into *capture bundles* (page images, quality stats, and quick OCR where Apple Vision exists). Runs on macOS, iOS and Linux. The desk camera station is inspired by [OCRX](https://github.com/zacharyelston/OCRX). |
-| **Sieve** | OCR and classification on the M1 Mac mini: Apple Vision for an instant pass, DeepSeek-OCR-2 (MLX) for layout-aware text, a local LLM to pull out type, date, institution, people and amounts. Linux stations rely on it for all OCR. |
-| **HomeLibrarian** | The family-records library (Ubuntu mini now, NAS at release): write-once originals, full-text search, a review queue, retention reminders. |
+| **Sieve** | OCR and classification on Apple Silicon (an M1 Mac mini in the reference household): Apple Vision for an instant pass, DeepSeek-OCR-2 (MLX) for layout-aware text, a local LLM to pull out type, date, institution, people and amounts. Linux stations rely on it for all OCR. |
+| **Library** | A records library (HomeLibrarian in a household): write-once originals, full-text search, visibility, a review queue, retention reminders. Any number of named libraries, each wherever it's needed. |
+| **Publisher and portal** | Feeds from one library to another or to a website, on the owner's terms: a guest library on the guest wifi, an offline library in a car, a club's public and members sites. Static site or live read-only portal. |
 
-FamilyFinances consumes the same pipeline as a separate service alongside HomeLibrarian.
+FamilyFinances consumes the same pipeline as a separate service alongside the household library.
 
-**Family records never leave the house**: no cloud OCR APIs, no work infrastructure.
+The modules are composed per deployment: a household, a car, a club or a library each run as many libraries as
+they need, wherever they need them. See [docs/design.md](docs/design.md#core-modules-composed-per-deployment).
+
+**Private by default, published by choice**: OCR and search never use cloud APIs or anyone else's infrastructure,
+and nothing leaves the owner's machines unless the owner publishes it through the portal.
 
 ## Status
 
 Design stage. See [docs/design.md](docs/design.md) for the architecture, what's reused from earlier work, and
-the phased plan. Phase 0 (measuring Apple Vision vs DeepSeek-OCR-2 on home hardware) comes first.
+the phased plan. Phase 0 (measuring Apple Vision vs DeepSeek-OCR-2 on home hardware) is done:
+[docs/phase0-results.md](docs/phase0-results.md). The backend plan, derived from myvect and the HaberDash OCR
+workers, is in [docs/backend.md](docs/backend.md).
 
 ## License
 
