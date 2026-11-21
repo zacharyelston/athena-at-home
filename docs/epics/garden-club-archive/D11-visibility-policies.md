@@ -50,10 +50,10 @@ tests, so every consumer (review UI, publisher, the choices sheet) gets the same
   when = { newer_than_years = 50 }
 
   [[policy]]
-  name = "directories-members"  # content
+  name = "directories-members"  # content (conditions combine with AND; write two policies for OR)
   kind = "content"
   cap = "members"
-  when = { type_in = ["directory"], tags_any = ["contact-details"] }
+  when = { type_in = ["directory"] }
 
   [[policy]]
   name = "clippings-in-copyright"  # rights
