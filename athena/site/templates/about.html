@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}About · {{ site.title }}{% endblock %}
+{% block main %}
+<h1>About this archive</h1>
+{% for p in site.about_more or site.about %}
+<p>{{ p }}</p>
+{% endfor %}
+
+<h2>What is here</h2>
+<p>{{ counts["items"] }} {{ "item" if counts["items"] == 1 else "items" }} and {{ counts["pages"] }} {{ "page" if counts["pages"] == 1 else "pages" }}.</p>
+{% if series_list %}
+<ul>
+  {% for s in series_list %}
+  <li><a href="{{ root }}series/{{ s.slug }}/">{{ s.title }}</a>: {{ s["items"]|length }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+<p>Not everything in the collection is shown. Its owners decide what is shared, and some pages have parts covered in black to protect people's privacy.</p>
+
+<h2>How it was made</h2>
+<p>Each page was photographed or scanned. The originals are kept by the collection's owners; the pictures here are smaller copies.</p>
+<p>The text beside a page was read from the picture by software unless it says a person checked it. It has mistakes, especially in handwriting, names and numbers. When it matters, read the page itself.</p>
+
+<h2>Removals and corrections</h2>
+{% if site.contact %}
+<p>If something here is about you or your family and you would like it removed, or if a title, date or name is wrong, <a href="{{ site.contact_href }}">get in touch</a>. Every item page also has a link for this.</p>
+{% else %}
+<p>If something here should be removed or corrected, please tell the collection's owners.</p>
+{% endif %}
+
+<h2>Your privacy</h2>
+<p>This site sets no cookies and does no tracking. It loads nothing from other sites, and searching happens in your own browser.</p>
+{% endblock %}

@@ -56,9 +56,10 @@ jobs:
           tar xzf "$tarball"
           sudo install "nats-server-${NATS_SERVER_VERSION}-linux-amd64/nats-server" /usr/local/bin/
           nats-server --version
-      - name: Install (client, library and dev extras; the sieve extra is Apple Silicon only)
+      - name: Install (client, library, site and dev extras; the sieve extra is Apple Silicon only)
         run: |
           uv venv --python ${{ matrix.python }} .venv
-          uv pip install --python .venv/bin/python -e ".[client,library,dev]"
+          uv pip install --python .venv/bin/python -e ".[client,library,site,dev]"
+          .venv/bin/python -m pagefind --version
       - name: Tests
         run: .venv/bin/python -m pytest -m "not e2e" -rs

@@ -22,6 +22,9 @@ sieve = [
 client = ["nats-py[nkeys]>=2.7"]
 # The library: PostgreSQL (psycopg 3, LGPL-3.0), NATS events, page derivatives
 library = ["psycopg[binary]>=3.2", "nats-py[nkeys]>=2.7", "pillow>=10.0"]
+# The static site builder: templates (Jinja2, BSD-3-Clause) and in-browser search (Pagefind, MIT; pinned, because
+# the site's leak check reads the index format it writes). Checking a site also uses the library extra's Pillow.
+site = ["jinja2>=3.1", "pagefind[bin]==1.6.0"]
 # Tests on any platform (CI runs Linux with .[client,dev]); MLX and Apple Vision tests skip where unavailable
 dev = ["pytest>=8", "pytest-asyncio>=0.23", "rapidfuzz>=3", "pillow>=10.0", "numpy>=1.26", "opencv-python-headless>=4.9",
        "hypothesis>=6"]
@@ -40,6 +43,7 @@ include = ["sieve*", "athena*"]
 [tool.setuptools.package-data]
 "athena.bundle" = ["*.schema.json"]
 "athena.library.migrations" = ["*.sql"]
+"athena.site" = ["templates/*.html", "static/*", "static/vendor/*/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

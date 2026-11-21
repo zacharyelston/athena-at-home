@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }} · {{ site.title }}{% endblock %}
+{% block main %}
+<article data-pagefind-body
+         data-image="{{ item.cover.path }}" data-date="{{ item.date }}" data-pagefind-meta="image[data-image], date[data-date]"
+         data-series="{{ item.series_title }}" data-decade="{{ item.decade_label }}"{% if item.type %} data-type="{{ item.type }}"{% endif %}
+
+         data-pagefind-filter="Series[data-series], Decade[data-decade]{% if item.type %}, Type[data-type]{% endif %}">
+  <p class="crumbs" data-pagefind-ignore>
+    <a href="{{ root }}">Browse</a> ›
+    <a href="{{ root }}series/{{ item.series }}/">{{ item.series_title }}</a>
+  </p>
+  <h1>{{ item.title }}</h1>
+  <p class="item-meta" data-pagefind-ignore>{{ item.date }} · {{ item.pages|length }} {{ "page" if item.pages|length == 1 else "pages" }}</p>
+
+  {% if item.pages|length > 1 %}
+  <nav class="page-strip" aria-label="Pages of this item" data-pagefind-ignore>
+    <ol>
+      {% for p in item.pages %}
+      <li><a href="#page-{{ p.n }}"><img src="{{ root }}{{ p.images.thumb.path }}" width="{{ p.images.thumb.width }}" height="{{ p.images.thumb.height }}" alt="Page {{ p.n }}" loading="lazy"></a></li>
+      {% endfor %}
+    </ol>
+  </nav>
+  {% endif %}
+
+  {% for p in item.pages %}
+  <section class="page" aria-labelledby="page-{{ p.n }}">
+    <h2 id="page-{{ p.n }}">Page {{ p.n }}</h2>
+    <a class="page-image" href="{{ root }}{{ p.largest.path }}" data-zoom="{{ loop.index0 }}">
+      <img src="{{ root }}{{ p.images.web.path }}" width="{{ p.images.web.width }}" height="{{ p.images.web.height }}"
+           alt="Page {{ p.n }} of {{ item.title }}"{% if not loop.first %} loading="lazy"{% endif %}>
+      <span class="zoom-hint" data-pagefind-ignore>Enlarge</span>
+    </a>
+    {% if p.text %}
+    <details class="ocr">
+      <summary data-pagefind-ignore>{{ p.text_label }}</summary>
+      <div class="ocr-text">{{ p.text }}</div>
+    </details>
+    {% else %}
+    <p class="quiet" data-pagefind-ignore>No text is available for this page.</p>
+    {% endif %}
+  </section>
+  {% endfor %}
+
+  <section class="about-item" aria-labelledby="about-item" data-pagefind-ignore>
+    <h2 id="about-item">About this item</h2>
+    <dl>
+      <dt>Date</dt><dd>{{ item.date }}</dd>
+      <dt>Series</dt><dd><a href="{{ root }}series/{{ item.series }}/">{{ item.series_title }}</a></dd>
+      {% if item.type %}<dt>Type</dt><dd>{{ item.type }}</dd>{% endif %}
+      {% if item.creator %}<dt>Made by</dt><dd>{{ item.creator }}</dd>{% endif %}
+      {% if item.tags %}<dt>Tags</dt><dd>{{ item.tags|join(", ") }}</dd>{% endif %}
+      {% if item.language and item.language != site.lang %}<dt>Language</dt><dd>{{ item.language }}</dd>{% endif %}
+      {% if item.notes %}<dt>Notes</dt><dd>{{ item.notes }}</dd>{% endif %}
+      {% if item.rights %}<dt>Rights</dt><dd>{{ item.rights }}</dd>{% endif %}
+      <dt>Cite as</dt><dd>{{ citation }}</dd>
+    </dl>
+    {% if removal_href %}
+    <p><a href="{{ removal_href }}">Ask for this item to be removed or corrected</a></p>
+    {% endif %}
+  </section>
+</article>
+
+<dialog id="zoom" class="zoom" aria-label="Enlarged page">
+  <div class="zoom-bar">
+    <span id="zoom-label" aria-live="polite"></span>
+    <span class="zoom-buttons">
+      <button type="button" id="zoom-prev" aria-label="Previous page">‹</button>
+      <button type="button" id="zoom-next" aria-label="Next page">›</button>
+      <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
+      <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+      <button type="button" id="zoom-home" aria-label="Fit the page">Fit</button>
+      <button type="button" id="zoom-close">Close</button>
+    </span>
+  </div>
+  <div id="zoom-canvas" class="zoom-canvas"></div>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script type="application/json" id="viewer-data" data-root="{{ root }}">{{ viewer|tojson }}</script>
+<script src="{{ root }}static/vendor/openseadragon/openseadragon.min.js?v={{ v }}" defer></script>
+<script src="{{ root }}static/viewer.js?v={{ v }}" defer></script>
+{% endblock %}

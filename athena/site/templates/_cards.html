@@ -1,0 +1,13 @@
+{% macro cards(items, root) %}
+<ul class="cards">
+  {% for item in items %}
+  <li>
+    <a href="{{ root }}{{ item.url }}">
+      <img src="{{ root }}{{ item.cover.path }}" width="{{ item.cover.width }}" height="{{ item.cover.height }}" alt="" loading="lazy">
+      <span class="card-title">{{ item.title }}</span>
+    </a>
+    <span class="card-meta">{{ item.date }} · {{ item.pages|length }} {{ "page" if item.pages|length == 1 else "pages" }}</span>
+  </li>
+  {% endfor %}
+</ul>
+{% endmacro %}

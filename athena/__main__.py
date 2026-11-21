@@ -5,6 +5,7 @@
   athena library setup|intake|ingest|ocr|search|publish-events|status
   athena library explain|set-visibility|reviews|check-policies
   athena publish build|check|diff
+  athena site build|check|serve
 """
 from __future__ import annotations
 
@@ -54,8 +55,10 @@ def main(argv=None) -> int:
 
     from .library.cli import add_parser as add_library
     from .publish.cli import add_parser as add_publish
+    from .site.cli import add_parser as add_site
     add_library(sub)
     add_publish(sub)
+    add_site(sub)
 
     args = ap.parse_args(argv)
     return args.func(args)

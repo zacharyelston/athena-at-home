@@ -17,6 +17,7 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
+import warnings
 import zlib
 from datetime import date
 from pathlib import Path
@@ -51,7 +52,9 @@ def _views(data: bytes, name: str) -> list[tuple[str, bytes]]:
         if name.endswith((".json", ".jsonl", ".js", ".html")) or label:
             try:
                 text = blob.decode("utf-8")
-                unescaped = text.encode("utf-8").decode("unicode_escape", errors="ignore").encode("utf-8", "ignore")
+                with warnings.catch_warnings():          # scripts hold backslashes that aren't escapes; fine
+                    warnings.simplefilter("ignore", DeprecationWarning)
+                    unescaped = text.encode("utf-8").decode("unicode_escape", errors="ignore").encode("utf-8", "ignore")
                 if unescaped != blob:
                     views.append((label + " (unescaped)", unescaped))
             except UnicodeDecodeError:

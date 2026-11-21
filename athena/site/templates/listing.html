@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% from "_cards.html" import cards %}
+{% block title %}{{ heading }} · {{ site.title }}{% endblock %}
+{% block main %}
+<p class="crumbs"><a href="{{ root }}">Browse</a> › {{ kind }}</p>
+<h1>{{ heading }}</h1>
+{% if description %}<p class="lead">{{ description }}</p>{% endif %}
+<p class="quiet">{{ items|length }} {{ "item" if items|length == 1 else "items" }}, oldest first</p>
+{{ cards(items, root) }}
+{% endblock %}

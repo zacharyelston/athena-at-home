@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Search · {{ site.title }}{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ root }}pagefind/pagefind-ui.css">
+{% endblock %}
+{% block main %}
+<h1>Search</h1>
+<p class="quiet">Most text here was read from the pages by software and has mistakes, so a search can miss things. Browsing by series or decade finds everything.</p>
+<div id="search" data-root="{{ root }}"></div>
+<noscript><p>Search needs JavaScript. Everything can also be found from the <a href="{{ root }}">browse page</a>.</p></noscript>
+{% endblock %}
+{% block scripts %}
+<script src="{{ root }}pagefind/pagefind-ui.js" defer></script>
+<script src="{{ root }}static/search.js?v={{ v }}" defer></script>
+{% endblock %}

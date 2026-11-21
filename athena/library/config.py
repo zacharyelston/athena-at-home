@@ -145,9 +145,16 @@ def _publish(d: dict) -> PublishConfig:
 def from_dict(raw: dict, env: dict | None = None, source_path: Path | None = None) -> LibraryConfig:
     env = os.environ if env is None else env
     lib = raw.get("library") or {}
-    unknown = set(raw) - {"library", "collection", "series", "vocabulary", "ocr", "nats", "policy", "feed", "publish"}
+    unknown = set(raw) - {"library", "collection", "series", "vocabulary", "ocr", "nats", "policy", "feed", "publish",
+                          "site"}
     if unknown:
         raise ConfigError(f"unknown config sections: {sorted(unknown)}")
+    if raw.get("site") is not None:      # the site builder reads [site.*] itself; catch mistakes in it here too
+        from athena.site.config import SiteConfigError, sites_from_dict
+        try:
+            sites_from_dict(raw["site"], source_path.parent if source_path else None)
+        except SiteConfigError as e:
+            raise ConfigError(str(e)) from None
     name = _slug(lib.get("name"), "library.name")
 
     def setting(key: str, env_key: str, section: dict = lib, required: bool = False):

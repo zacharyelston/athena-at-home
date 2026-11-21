@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_cards.html" import cards %}
+{% block main %}
+<h1>{{ site.title }}</h1>
+{% if site.tagline %}<p class="tagline">{{ site.tagline }}</p>{% endif %}
+{% for p in site.about %}
+<p class="lead">{{ p }}</p>
+{% endfor %}
+
+{% if search %}
+<form class="home-search" action="{{ root }}search/" method="get" role="search">
+  <label for="q">Search the archive</label>
+  <div class="row">
+    <input id="q" name="q" type="search" autocomplete="off">
+    <button type="submit">Search</button>
+  </div>
+</form>
+{% endif %}
+
+{% if not counts["items"] %}
+<p>Nothing has been published here yet.</p>
+{% endif %}
+
+{% if featured %}
+<section aria-labelledby="featured">
+  <h2 id="featured">Featured</h2>
+  {{ cards(featured, root) }}
+</section>
+{% endif %}
+
+{% if series_list %}
+<section aria-labelledby="by-series">
+  <h2 id="by-series">Browse by series</h2>
+  <ul class="groups">
+    {% for s in series_list %}
+    <li>
+      <a href="{{ root }}series/{{ s.slug }}/">{{ s.title }}</a>
+      <span class="count">{{ s["items"]|length }} {{ "item" if s["items"]|length == 1 else "items" }}</span>
+      {% if s.description %}<p>{{ s.description }}</p>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if decade_list %}
+<section aria-labelledby="by-decade">
+  <h2 id="by-decade">Browse by decade</h2>
+  <ul class="chips">
+    {% for d in decade_list %}
+    <li><a href="{{ root }}decade/{{ d.slug }}/">{{ d.title }} <span class="count">{{ d["items"]|length }}</span></a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

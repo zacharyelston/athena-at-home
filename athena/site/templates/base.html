@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="{{ site.lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="{{ csp }}">
+<meta name="referrer" content="no-referrer">
+{% if not indexable %}
+<meta name="robots" content="noindex, nofollow">
+{% endif %}
+<title>{% block title %}{{ site.title }}{% endblock %}</title>
+<link rel="stylesheet" href="{{ root }}static/site.css?v={{ v }}">
+<link rel="stylesheet" href="{{ root }}static/theme.css?v={{ v }}">
+{% block head %}{% endblock %}
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+{% if site.preview %}
+<p class="preview" role="note">Preview. This site is not public yet and may change.</p>
+{% endif %}
+<header class="site-header">
+  <a class="brand" href="{{ root }}">
+    {% if logo %}<img src="{{ root }}static/{{ logo }}?v={{ v }}" alt="" class="logo">{% endif %}
+    <span>{{ site.title }}</span>
+  </a>
+  <nav aria-label="Site">
+    <ul>
+      <li><a href="{{ root }}"{% if path == "index.html" %} aria-current="page"{% endif %}>Browse</a></li>
+      {% if search %}
+      <li><a href="{{ root }}search/"{% if path == "search/index.html" %} aria-current="page"{% endif %}>Search</a></li>
+      {% endif %}
+      <li><a href="{{ root }}about/"{% if path == "about/index.html" %} aria-current="page"{% endif %}>About</a></li>
+    </ul>
+  </nav>
+</header>
+<main id="main">
+{% block main %}{% endblock %}
+</main>
+<footer class="site-footer">
+  <p>{{ site.title }}</p>
+  <p>
+    <a href="{{ root }}about/">About this archive</a>
+    {% if site.contact %}
+    · <a href="{{ site.contact_href }}">Ask for a removal or a correction</a>
+    {% endif %}
+  </p>
+  <p class="quiet">This site sets no cookies, does no tracking and loads nothing from other sites.</p>
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>
