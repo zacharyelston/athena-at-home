@@ -10,6 +10,10 @@
 | **Week** | W3–W4 |
 | **Branch** | `feat/publisher` (from `feat/visibility`) |
 
+> **Built** on `feat/publisher` (2026-11-21). As built: zoom is three image sizes per page only (Deep Zoom tiles not
+> built); the redaction format and the rule for withholding text are in `docs/publisher.md` on that branch;
+> `athena.publish.plan_feed` is the dry run D14's "what's public" view uses.
+
 ## Why
 
 The feed is the boundary ([portal.md](../../portal.md#feeds-the-boundary)): a site never reads the library; the

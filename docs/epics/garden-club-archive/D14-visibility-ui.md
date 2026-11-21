@@ -10,6 +10,12 @@
 | **Week** | W4 |
 | **Branch** | `feat/visibility-ui` (from `feat/review-ui`, rebased on `feat/visibility`) |
 
+> **Redaction format is fixed by D15** (`docs/publisher.md` on `feat/publisher`): regions as fractions of the page
+> image; text spans tied to a specific text row; and a `text_checked` entry meaning "I read this text against the
+> page's regions; nothing more to hide". The publisher **withholds a page's text** when a region has no text entry
+> for the current text, or when the text changed after its spans were made. So this UI must make it easy to finish a
+> redaction (spans or "text checked") and must list pages whose text is currently withheld.
+
 ## Why
 
 The club's choices have to be easy to make and easy to change: by series in a few clicks, by policy for whole
