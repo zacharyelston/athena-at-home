@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- SPDX-License-Identifier: GPL-3.0-or-later
+     Runs Sieve at login on the M1 Mac mini. Edit the paths (REPLACE_ME), then:
+       cp org.athena-at-home.sieve.plist ~/Library/LaunchAgents/
+       launchctl load ~/Library/LaunchAgents/org.athena-at-home.sieve.plist
+     A LaunchAgent (not a system daemon): Apple Vision and Metal need a logged-in user session. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>org.athena-at-home.sieve</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/REPLACE_ME/athena-at-home/.venv/bin/sieve</string>
+    <string>serve</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>SIEVE_NATS_URL</key><string>tls://REPLACE_ME_UBUNTU_MINI:4222</string>
+    <key>SIEVE_NATS_CREDS</key><string>/Users/REPLACE_ME/.nats/sieve.creds</string>
+    <key>HF_HUB_OFFLINE</key><string>1</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>30</integer>
+  <key>StandardOutPath</key><string>/Users/REPLACE_ME/Library/Logs/athena-sieve.log</string>
+  <key>StandardErrorPath</key><string>/Users/REPLACE_ME/Library/Logs/athena-sieve.log</string>
+</dict>
+</plist>
