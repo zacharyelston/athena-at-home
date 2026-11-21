@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.4.0
       - name: Pillow for the EXIF check
         run: uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python "pillow>=10.0"
       - name: SPDX headers
@@ -39,7 +39,7 @@ jobs:
         python: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.4.0
       - name: Fonts for the synthetic test set
         run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-liberation fonts-dejavu-core
       - name: nats-server (pinned, checksum verified)
