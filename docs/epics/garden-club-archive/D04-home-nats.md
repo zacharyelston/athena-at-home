@@ -10,6 +10,10 @@
 | **Week** | W1–W2 |
 | **Branch** | `feat/home-nats` (from `feat/ci`) |
 
+> **Native first** ([ADR 0001, amendment 1](../../adr/0001-containers-and-postgres.md#amendment-1-native-first-on-apple-silicon-containers-as-the-destination)): until containers resume, NATS runs as a native
+> `nats-server` (Homebrew on a Mac, the release binary on Linux) under launchd or systemd, with the same config,
+> accounts, TLS and JetStream. The compose service follows with D22.
+
 ## Why
 
 Sieve, the library and capture stations talk over NATS. The deployment needs its own server, with its own operator

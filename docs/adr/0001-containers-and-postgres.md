@@ -1,6 +1,7 @@
 # ADR 0001: Containers first; PostgreSQL as each library's database
 
-Status: **accepted**, 2026-11-21 (the author). Supersedes the "SQLite with FTS5 to start" and "`nats-server` as a
+Status: **accepted**, 2026-11-21 (the author); **amended** the same day: native first on Apple Silicon, containers as
+the destination (see [Amendment 1](#amendment-1-native-first-on-apple-silicon-containers-as-the-destination)). Supersedes the "SQLite with FTS5 to start" and "`nats-server` as a
 systemd service" parts of [design.md](../design.md), [backend.md](../backend.md) and the
 [garden club epic](../epics/garden-club-archive/README.md).
 
@@ -118,3 +119,24 @@ Costs and risks:
   can disagree; an append-only table plus an outbox in PostgreSQL gives the same provenance with transactions.
 - **Kubernetes from the start**: too much for the garden club's January launch. Compose comes first, laid out so the
   Kustomize base follows.
+
+## Amendment 1: native first on Apple Silicon, containers as the destination
+
+2026-11-21, the author. A separate exploration is building an endpoint through which containerized apps on a Mac
+could reach the GPU (Metal). Until it reports back:
+
+- **Build and run Athena@Home natively on macOS with Metal now.** Sieve runs under launchd with MLX (as decision 6
+  already says); the library, publisher and NATS run as native processes too: PostgreSQL and `nats-server` from
+  Homebrew on a Mac, or distribution packages on Linux, each under launchd or systemd.
+- **Containers remain the final destination**, as multi-arch images (`linux/arm64` and `linux/amd64`), Compose
+  first and Kustomize-deployed Namespaces after. If the GPU endpoint works, Sieve on a Mac may become a container
+  too; on NVIDIA it already will be.
+- **So the code stays container-ready**: configuration only from environment variables and one config file; every
+  data path (files, intake, database URL, NATS URL and creds) is a parameter; no hostnames, users or install paths
+  assumed; one process per service; health endpoints; no reliance on macOS-only APIs outside Sieve's Metal and
+  Apple Vision code. Native service definitions (launchd plists, systemd units) are thin wrappers that a container
+  entrypoint replaces later.
+- **PostgreSQL stays the database** (decisions 2 and 3 unchanged). Natively, any supported major from 14 up works
+  for the library core; the image will pin one major when containers resume. Tests start a throwaway PostgreSQL
+  with `initdb` (as they already start a throwaway `nats-server`), so they need no running server.
+- **D22 (the compose stack) waits** until containers resume; D04's NATS and D10's library run natively meanwhile.

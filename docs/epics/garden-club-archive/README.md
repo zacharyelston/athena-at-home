@@ -53,9 +53,10 @@ next deployment.
 - A capture bundle spec with archival metadata (collection → series → item → page) and a capture tool that turns
   iPhone, flatbed and PIXY images into bundles.
 - A pilot of ~50 real pages that decides the capture method and measures OCR on old material.
-- Containers from the start ([ADR 0001](../../adr/0001-containers-and-postgres.md)): a Docker Compose stack on
-  the Ubuntu mini (site NATS; one project per library) laid out to become a Kustomize-deployed Namespace per
-  library in a home cluster later. Sieve stays native on the M1.
+- **Native first on Apple Silicon (Metal), containers as the destination**
+  ([ADR 0001 and its amendment](../../adr/0001-containers-and-postgres.md)): the library, NATS and Sieve run natively
+  now; the code stays container-ready for multi-arch images, a Docker Compose stack (D22, deferred) and later a
+  Kustomize-deployed Namespace per library in a home cluster.
 - The library MVP: named instances, write-once originals on a mounted volume, PostgreSQL with append-only
   provenance and full-text search, visibility tiers and policies, `library.events` through an outbox.
 - A minimal review UI for metadata, OCR checks, visibility choices and redaction.
@@ -98,19 +99,19 @@ people named). Week numbers are in the calendar below.
 | [D07](D07-capture-tool.md) | Capture tool: import, item grouping, metadata entry, quality checks | code | 3 | D05 | W2 |
 | [D08](D08-permission-and-rights.md) | Permission to digitize and publish; rights inventory | human-archivist | 1 | D01 | W1–W3 |
 | [D09](D09-sieve-ocr-jobs.md) | Sieve `ocr.jobs`: durable queue, retry, dead-letter | code | 3 | D03, D04 | W2 |
-| [D10](D10-library-core.md) | Library MVP: named instances, intake, originals, PostgreSQL schema, search, events | code | 5 | D05, D22 | W2–W3 |
+| [D10](D10-library-core.md) | Library MVP: named instances, intake, originals, PostgreSQL schema, search, events | code | 5 | D05 | W2–W3 |
 | [D11](D11-visibility-policies.md) | Visibility tiers, policies and effective visibility | code | 3 | D05 | W2–W3 |
 | [D12](D12-capture-sessions.md) | Capture sessions: runbook, then the whole shoebox | ops + human | 1 + sessions | D06, D07 | W2–W7 |
 | [D13](D13-review-ui.md) | Review UI: metadata, OCR check, review status | code | 3 | D10 | W3 |
 | [D14](D14-visibility-ui.md) | Review UI: visibility choices, policies view, redaction | code | 3 | D11, D13, D15 | W4 |
 | [D15](D15-publisher.md) | Publisher: feeds, redaction burn-in, derivatives, zoom tiles | code | 3 | D10, D11 | W3–W4 |
 | [D16](D16-static-site.md) | Static site: Pagefind per tier, optional members build, leak tests | code | 3 | D15 | W4 |
-| [D17](D17-backups.md) | Backups (3-2-1), restore test, BagIt export | ops | 3 | D10, D22 | W4, W7 |
+| [D17](D17-backups.md) | Backups (3-2-1), restore test, BagIt export | ops | 3 | D10 | W4, W7 |
 | [D18](D18-review-and-club-choices.md) | Archivist's review pass and the club's visibility choices | human-archivist | sessions | D08, D12, D14, D16 | W4–W7 |
 | [D19](D19-hosting-and-launch.md) | Hosting, domain and launch | ops | 2 | D16, D18 | W7–W8 |
 | [D20](D20-handover.md) | Handover guide and training for the archivist and the club | doc | 2 | D14, D17, D19 | W7–W8 |
 | [D21](D21-lessons-learned.md) | Lessons learned and an example deployment config | doc | 1 | D19 | W8 |
-| [D22](D22-compose-stack.md) | Compose stack and the `athena-postgres` image | code + ops | 3 | D02, D04 | W1–W2 |
+| [D22](D22-compose-stack.md) | Compose stack and the `athena-postgres` image (**deferred**: native first) | code + ops | 3 | D02, D04 | later |
 
 **Agent work**: 48 days across code, ops and docs deliverables (about 42 of them before the preview), against 18
 working days before the holidays plus two weeks in January. Three agents in parallel have 54 agent-days before
@@ -122,7 +123,7 @@ and D18.
 
 | Week | Dates | Working days | What happens |
 |---|---|---|---|
-| **W1** | Nov 23–27 | 3 (**Thanksgiving** Thu 26, Fri 27 off) | Survey and count (D01); ask for permission (D08); CI (D02); Sieve on the M1 (D03); bundle spec (D05); NATS starts (D04); compose stack starts (D22); pilot fixtures and scorer (D06); pilot pages captured if the shoebox is at hand |
+| **W1** | Nov 23–27 | 3 (**Thanksgiving** Thu 26, Fri 27 off) | Survey and count (D01); ask for permission (D08); CI (D02); Sieve on the M1 (D03); bundle spec (D05); NATS starts (D04);  pilot fixtures and scorer (D06); pilot pages captured if the shoebox is at hand |
 | **W2** | Nov 30–Dec 4 | 5 | **Pilot scored and capture method decided by Wed Dec 2** (D06); capture tool (D07); `ocr.jobs` (D09); library core starts (D10); policy engine (D11); runbook (D12); first capture session with separator sheets |
 | **W3** | Dec 7–11 | 5 | Library core done (D10); review UI (D13); publisher starts (D15); capture sessions; first overnight OCR batches |
 | **W4** | Dec 14–18 | 5 | Visibility UI and redaction (D14); static site (D16); backups (D17); **preview site for the archivist and board by Fri Dec 18** (private: local or behind host auth); review pass starts (D18) |
@@ -170,8 +171,7 @@ graph LR
   D10 --> D17[D17 backups]
   D02 --> D22[D22 compose stack]
   D04 --> D22
-  D22 --> D10
-  D22 --> D17
+  D22 -.later: containers.-> D10
   D08 --> D18[D18 review + club choices]
   D12 --> D18
   D14 --> D18
@@ -194,8 +194,8 @@ run; the rest of D14 starts without it.
 ## Critical path
 
 **To the preview (code)**: D05 bundle spec (2) → D10 library core (5) → D15 publisher (3) → D16 static site (3)
-= **13 working days**, against 18 available before Fri Dec 18. D22 (the compose stack) runs beside D05 in W1–W2;
-D10 can start against the stock `postgres` image and move onto D22's when it lands. D11 runs beside D10 because the
+= **13 working days**, against 18 available before Fri Dec 18. D22 (the compose stack) is deferred while
+everything runs natively (ADR 0001, amendment 1), so it's off the path. D11 runs beside D10 because the
 policy engine is a pure module over the hierarchy D05 defines; it joins D10 for D15.
 
 **To the launch (people)**: D01 survey → D08 permission → preview (M4) → D18 the club's choices (by Jan 8) → D19
@@ -245,6 +245,7 @@ Capture is the second-longest chain (D01 → D06 → D12 → D18) and has buffer
 | Q12 | **Takedown contact**: who on the site receives "please remove this" requests? | club | Fri Jan 8 |
 | Q13 | **After launch**: who adds new items, and does the club want its own copy (a BagIt export on a disk)? | club | Fri Jan 8 |
 | Q14 | **Container images**: build on the mini only, or push to a private registry (e.g. GitHub's container registry, private)? Images hold code only, never records. | author | Fri Dec 4 |
+| Q15 | **Where the library runs natively until containers arrive**: on the Ubuntu mini (systemd) as planned, or on the M1 beside Sieve (launchd)? | author | Fri Dec 4 |
 
 ## Week-1 checklist (Nov 23–25)
 
@@ -256,8 +257,7 @@ People:
 - [ ] Archivist: pick ~50 pilot pages across the decades and material types (D01).
 - [ ] Archivist: send the permission request to the club (D08; template in D08).
 - [ ] Author: confirm the M1 is free for Sieve (FileVault on) and the Ubuntu mini's library disk is encrypted.
-- [ ] Author: install Docker Engine and the compose plugin on the Ubuntu mini (D22), with its data root on the
-      encrypted disk.
+- [ ] Author: answer Q15 (where the library runs natively until containers arrive).
 - [ ] Author: get a ruler or printed scale and a grey card for capture; check the iPhone shoots 48 MP.
 - [ ] Author: turn off iCloud Photos on the iPhone used for capture (or use a phone without it), so no record is
       uploaded to the cloud.
@@ -268,7 +268,6 @@ Agents:
 - [ ] D03 Sieve installed on the M1; 31 tests and the end-to-end test pass there; M1 timings recorded.
 - [ ] D05 bundle spec, JSON Schema and validator on `feat/capture-bundle`.
 - [ ] D04 nsc operator and accounts generated; the `athena-site` NATS container running with JetStream.
-- [ ] D22 `athena-postgres` image and the compose layout on `feat/compose-stack`.
 - [ ] D06 synthetic historical fixtures and the pilot scorer, tested in CI.
 
 ## Rules every deliverable follows
@@ -296,9 +295,10 @@ Agents:
 
 [backend.md](../../backend.md#build-order)'s build order is updated for this deployment:
 
-- **Containers and PostgreSQL from the start** ([ADR 0001](../../adr/0001-containers-and-postgres.md)): a compose
-  stack (D22) comes before the library, and the library's database is PostgreSQL rather than SQLite, so a library
-  can move from a mini to a home cluster (and a business's larger cluster) without a redesign.
+- **PostgreSQL, native first, containers as the destination** ([ADR 0001](../../adr/0001-containers-and-postgres.md)
+  and its amendment): the library's database is PostgreSQL rather than SQLite, so a library can move from a mini to
+  a home cluster (and a business's larger cluster) without a redesign. Everything runs natively on Apple Silicon
+  now, written to be container-ready; the compose stack (D22) follows when containers resume.
 
 - **Capture moves ahead of the library.** The library's intake consumes capture bundles, and the pilot needs
   capture first, so the bundle spec (D05) is the first library-side work and the capture tool (D07) comes before

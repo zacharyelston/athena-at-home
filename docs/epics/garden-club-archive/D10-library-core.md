@@ -6,9 +6,14 @@
 | **Type** | code |
 | **Owner role** | ops agent |
 | **Size** | 5 days |
-| **Depends on** | D05 (bundle spec), D22 (compose stack and `athena-postgres`). Uses D09's `ocr.jobs` when it lands; until then its own `ocr.page` fallback. |
+| **Depends on** | D05 (bundle spec). D22 (compose) later, when containers resume. Uses D09's `ocr.jobs` when it lands; until then its own `ocr.page` fallback. |
 | **Week** | W2–W3 (schema on day 1 so D11, D13 and D15 can start against it) |
-| **Branch** | `feat/library-core` (from `feat/capture-bundle`, rebased on `feat/compose-stack` once it exists) |
+| **Branch** | `feat/library-core` (from `feat/capture-bundle`) |
+
+> **Native first** ([ADR 0001, amendment 1](../../adr/0001-containers-and-postgres.md#amendment-1-native-first-on-apple-silicon-containers-as-the-destination)): the library runs natively (PostgreSQL from Homebrew
+> or the distribution, the library under launchd or systemd) until containers resume. Everything below about compose
+> projects applies then; until then a named instance is its own database, data directory, config file and NATS
+> account, set by environment. Tests start a throwaway PostgreSQL with `initdb`.
 
 ## Why
 

@@ -10,6 +10,9 @@
 | **Week** | W1–W2 |
 | **Branch** | `feat/compose-stack` (from `feat/ci`) |
 
+> **Native first** ([ADR 0001, amendment 1](../../adr/0001-containers-and-postgres.md#amendment-1-native-first-on-apple-silicon-containers-as-the-destination)): this deliverable **waits** until containers
+> resume. The library and NATS run natively meanwhile; the code stays container-ready.
+
 ## Why
 
 [ADR 0001](../../adr/0001-containers-and-postgres.md): every server-side module runs as a container with its data on
