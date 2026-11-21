@@ -18,6 +18,10 @@ deploy updates and take things down, and a launch that ships exactly what the cl
 ## Inputs
 
 - D16 public and members builds, their size and **file count**.
+  Measured in D16 on a made-up feed of 800 items and 2,787 pages: **10,025 files and 3.6 GB** (about 3.6 files
+  and 1.3 MB a page; real photographs may compress differently, so measure the real build). The site needs nothing
+  from a host but static files: links are relative, its security policy is a `<meta>` tag rather than a header,
+  `404.html` is at the top level, and `athena publish diff` lists the paths to purge after a takedown.
 - The club's answers: host (Q5), domain (Q6), members side (Q7), takedown contact (Q12).
 
 ## Outputs

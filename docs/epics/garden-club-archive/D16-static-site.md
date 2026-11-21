@@ -10,6 +10,14 @@
 | **Week** | W4; **preview by Fri Dec 18** |
 | **Branch** | `feat/static-site` (from `feat/publisher`) |
 
+> **Built** on `feat/static-site` (2026-11-21); usage and settings are in `docs/static-site.md` on that branch. As
+> built: item pages show every page image top to bottom with its text beside it, and the viewer (OpenSeadragon
+> 6.1.1, vendored) opens over the feed's three image sizes; Pagefind is 1.6.0, pinned through the `site` extra;
+> every page carries a Content-Security-Policy confining it to its own host; indexing is off unless a public-tier
+> site opts in. Measured on a made-up 2,787-page feed: build 3.7 s, check 21 s, 10,025 files, 3.6 GB.
+> **Not done:** an automated accessibility audit (axe or pa11y), a try on a real iPhone, and the preview from the
+> real library for the archivist (needs captured and reviewed records; due Fri Dec 18).
+
 ## Why
 
 The club has no website. A static site, built from a feed and copied to any static host, means nothing of the

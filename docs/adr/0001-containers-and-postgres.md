@@ -140,3 +140,13 @@ could reach the GPU (Metal). Until it reports back:
   for the library core; the image will pin one major when containers resume. Tests start a throwaway PostgreSQL
   with `initdb` (as they already start a throwaway `nats-server`), so they need no running server.
 - **D22 (the compose stack) waits** until containers resume; D04's NATS and D10's library run natively meanwhile.
+
+### Note: KernelDock (2026-11-21)
+
+The exploration above produced KernelDock, a separate project of the author's: an authenticated HTTP job service
+with a Metal worker (a macOS app on the host) and a CUDA worker (a Linux container) behind one versioned tensor
+API, so a client container switches backends by URL. Its first version runs two reference operations (vector add
+and matrix multiply); model loading and inference are not implemented. So nothing changes here yet: Sieve stays
+native on Apple Silicon. If KernelDock later runs a model, a containerized Sieve would reach it through a URL and
+a token file from the environment, the same on a Mac and on NVIDIA, which is the shape this amendment asks the
+code to keep. Athena@Home does not depend on it, and would use it only on its owners' own machines.
