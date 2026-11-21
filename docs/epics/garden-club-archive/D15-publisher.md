@@ -24,7 +24,9 @@ leaks here, so this deliverable carries the strictest tests.
 
 ## Outputs
 
-- `athena/publish/` and `athena publish build <feed> --out <dir>`: a **feed directory**:
+- `athena/publish/` and `athena publish build <feed> --out <dir>`, run as the compose `publisher` service
+  (`docker compose run --rm publisher build public`; a Job in a cluster), writing to the `site` volume: a **feed
+  directory**:
 
   ```
   feed/
@@ -47,7 +49,7 @@ leaks here, so this deliverable carries the strictest tests.
 - **All metadata stripped** from every derivative (EXIF, XMP, IPTC, ICC profile replaced by sRGB), which removes
   iPhone GPS and device data.
 - **Originals never copied**; derivative pixel sizes capped so no feed image reaches master resolution.
-- **Share log**: each build appends to the library's audit log what entered or left each feed since the last build
+- **Share log**: each build records as assertions (source `publisher`) what entered or left each feed since the last build
   (who, what, when, why: from the visibility changes).
 - **Takedown**: `athena publish build` after an unshare drops the item; `athena publish diff <old> <new>` lists
   removed paths so D19's deploy can purge them from the host's cache.

@@ -1,4 +1,4 @@
-# D04 · Home NATS on the Ubuntu mini
+# D04 · Home NATS: the site's NATS container
 
 | | |
 |---|---|
@@ -8,27 +8,32 @@
 | **Size** | 2 days |
 | **Depends on** | — |
 | **Week** | W1–W2 |
-| **Branch** | `feat/home-nats` (from `main`) |
+| **Branch** | `feat/home-nats` (from `feat/ci`) |
 
 ## Why
 
 Sieve, the library and capture stations talk over NATS. The deployment needs its own server, with its own operator
-and accounts, TLS and JetStream (for `ocr.jobs`), and no link to any outside hub.
+and accounts, TLS and JetStream (for `ocr.jobs`), and no link to any outside hub. Per
+[ADR 0001](../../adr/0001-containers-and-postgres.md) it runs as a **container in the site stack** (compose project
+`athena-site` now; the `athena-system` namespace in a home cluster later), shared by every library at the site.
 
 ## Inputs
 
-- The Ubuntu Intel mini (16 GB), on the home LAN, library disk encrypted (LUKS).
+- The Ubuntu Intel mini (16 GB), on the home LAN, library disk encrypted (LUKS), with Docker Engine (D22).
 - The nsc recipe pattern from HaberDash `docs/nats-fabric-for-other-projects.md` (pattern only; nothing from the
   work hub: no operator, account, key, hostname or leafnode from it).
 - Sieve's settings: `SIEVE_NATS_URL`, `SIEVE_NATS_CREDS`, `SIEVE_NATS_TLS_HOSTNAME`.
 
 ## Outputs
 
-- `deploy/nats/`: a templated `nats-server.conf`, a systemd unit, `setup-operator.sh` (nsc), `make-certs.sh`
-  (a small private CA with `openssl` or `step`), and a README.
+- `deploy/nats/`: a templated `nats-server.conf`, `setup-operator.sh` (nsc), `make-certs.sh` (a small private CA
+  with `openssl` or `step`), `smoke.sh`, and a README.
+- The `nats` service in `deploy/compose/site.yml` (official `nats` image at a pinned version): config, certs and
+  account JWTs mounted read-only, JetStream on a named volume, port 4222 published on the LAN address only,
+  monitoring not published, a health check, `restart: unless-stopped`.
 - Deployment-specific values come from one env file (operator name, hostnames, account list, data dir); the
   repo holds an example, never real keys or certs.
-- On the Ubuntu mini: `nats-server` as a systemd service, JetStream on, TLS on, `max_payload: 8MB`.
+- On the Ubuntu mini: the `athena-site` stack running, JetStream on, TLS on, `max_payload: 8MB`.
 - Users and `.creds` files: `sieve` (OCR account), `library` (LIBRARY account), `station` (CAPTURE account).
 
 ## Steps
@@ -47,11 +52,14 @@ and accounts, TLS and JetStream (for `ocr.jobs`), and no link to any outside hub
    JetStream `store_dir` on the encrypted disk, TLS with the private CA (server cert for the mini's LAN name and
    IP), listen on the LAN interface only, monitoring port bound to localhost, `no_auth_user` unset, no leafnodes,
    no gateways, no websockets.
-4. **systemd**: dedicated `nats` user, `Restart=on-failure`, hardening (`ProtectSystem=strict`,
-   `ReadWritePaths` for the store dir).
+4. **Container**: the `nats` service in `site.yml`, non-root, read-only root filesystem, the JetStream volume the
+   only writable path, the `athena-site` network for libraries' containers to join. Clients on the LAN (Sieve on
+   the M1, capture stations) reach it on the published port; containers reach it by service name. One account per
+   library (`LIBRARY_<NAME>`) so a second library on the site gets its own, by configuration.
 5. **Keys**: the operator and account signing keys stay with the author (offline copy in D17's backups, encrypted);
    the server holds only what it needs (resolver preload or `MEMORY` resolver with the account JWTs).
-6. **Firewall**: `ufw` allows 4222 from the LAN subnet only.
+6. **Firewall**: `ufw` allows 4222 from the LAN subnet only (Docker's published ports bypass `ufw` unless bound to
+   the LAN address, so bind it explicitly and check from outside the subnet).
 7. Verify from the M1: Sieve connects with `sieve.creds` and TLS; `sieve ping` from a laptop with
    `station.creds` succeeds; a `station` user can't subscribe to `library.events`' internals or publish as
    `ocr.page` replies.
@@ -65,7 +73,7 @@ and accounts, TLS and JetStream (for `ocr.jobs`), and no link to any outside hub
 - JetStream is available to `OCR` and `LIBRARY` (`nats account info` shows it), not to `CAPTURE`.
 - Permission tests: `station` can request `ocr.page` but can't subscribe to `ocr.>` as a worker; unauthenticated
   connections are refused; plaintext connections are refused.
-- The server restarts on failure and after a reboot; JetStream data survives a restart.
+- The container restarts on failure and after a reboot; JetStream data survives `down` + `up`.
 - Nothing in the repo is a real key, cert or creds file (D02's guard plus a `*.creds`/`*.nk`/`*.pem` ignore rule).
 
 ## Test plan
@@ -81,9 +89,11 @@ A shell script `deploy/nats/smoke.sh` that runs the checks above with the `nats`
 
 ## Touches
 
-`deploy/nats/` (new), `.gitignore` (key and cert patterns), `docs/sieve.md` (pointer to the home server settings).
+`deploy/nats/` (new), `deploy/compose/site.yml` (the `nats` service; D22 owns the rest of `deploy/compose/`),
+`.gitignore` (key and cert patterns), `docs/sieve.md` (pointer to the home server settings).
 
 ## Done means
 
-The home NATS server runs on the Ubuntu mini under systemd with TLS, JetStream and three accounts; Sieve on the M1
-serves through it; the setup is reproducible from `deploy/nats/` and an env file.
+The site's NATS runs as a container on the Ubuntu mini with TLS, JetStream and per-purpose accounts; Sieve on the
+M1 (native, outside the containers) serves through it; the setup is reproducible from `deploy/nats/`,
+`deploy/compose/site.yml` and an env file.

@@ -35,8 +35,8 @@ car, another club or library) as in the club's site. Numbers measured on a real 
      rights date"), as patterns other clubs might reuse.
    - **Changes for the next deployment**: concrete issues or backlog items, and any change to the design docs or
      build order.
-2. `deploy/examples/club/library.toml`: a sanitized example of a club deployment (series list, type vocabulary,
-   policies, feeds, site config) with made-up names ("Example Garden Club"), so the next club starts from a
+2. `deploy/examples/club/`: a sanitized example of a club deployment: `library.toml` (series list, type vocabulary,
+   policies, feeds, site config) and the compose env file D22 defines with made-up names ("Example Garden Club"), so the next club starts from a
    working configuration.
 3. Proposed updates to `docs/design.md`, `docs/portal.md`, `docs/backend.md` if the experiment changed anything.
 

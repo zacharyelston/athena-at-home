@@ -5,8 +5,8 @@
 | **ID** | D17 |
 | **Type** | ops |
 | **Owner role** | ops agent (the author holds the backup passphrase and the off-site copy) |
-| **Size** | 2 days (setup in W4, restore test in W7) |
-| **Depends on** | D10 (library data directory layout) |
+| **Size** | 3 days (setup in W4, restore test in W7) |
+| **Depends on** | D10 (library schema and volumes), D22 (compose stack) |
 | **Week** | W4 (setup), W7 (restore test) |
 | **Branch** | `feat/backups` (from `feat/library-core`) |
 
@@ -17,22 +17,26 @@ backups. And the club should hold its own copy in an open format that doesn't ne
 
 ## Inputs
 
-- D10's data directory (`originals/`, `library.sqlite`, `library.toml`, `derivatives/`, `logs/`).
+- A library instance's PostgreSQL database and volumes (`files`: originals and derivatives; config: `library.toml`,
+  the env file, secrets), per D10 and D22.
 - D04's NATS operator and account keys, the CA, the creds files.
 - Session raw folders on the second disk (D12) until they're superseded by backups.
 - Q11 (off-site location).
 
 ## Outputs
 
-- `deploy/backup/`: `restic` (BSD-2) configuration, a systemd timer on the Ubuntu mini, an `athena library
-  snapshot` command that makes a consistent SQLite copy (SQLite backup API, not a file copy) before each run.
+- The compose `backup` service (profile `tools`, D22) and `deploy/backup/`: `pg_dump --format=custom` of the
+  library's database (consistent without stopping it), then `restic` (BSD-2) over the dump, the originals and the
+  config; run nightly by a host cron or systemd timer calling `athena-compose <name> run --rm backup` (in a cluster
+  later: a CronJob, or CloudNativePG's own backups for the database).
 - **3-2-1**:
   1. the library on the Ubuntu mini's encrypted disk (primary);
   2. a nightly restic repository on a local encrypted USB disk;
   3. an off-site restic repository (Q11): a second encrypted disk rotated to another home (the archivist's), or a
      cloud bucket that only ever receives restic's client-side-encrypted data. Either way the passphrase never
      leaves the author's (and, at handover, the club's) password manager.
-- What's backed up: originals, the SQLite snapshot, `library.toml`, audit logs, NATS keys and creds (separately,
+- What's backed up: originals, the database dump (which holds the assertion log, i.e. the audit trail),
+  `library.toml` and the env file, NATS keys and creds (separately,
   as an encrypted archive), deploy configs. Not backed up: derivatives, feeds and site builds (rebuilt from the
   library), JetStream data (transient).
 - `athena library export bagit <dir>`: a **BagIt** bag (RFC 8493) of originals plus metadata as CSV and JSON per
@@ -41,20 +45,21 @@ backups. And the club should hold its own copy in an open format that doesn't ne
 
 ## Steps
 
-1. Snapshot command and restic setup; nightly timer; `restic check --read-data-subset` weekly.
+1. Backup service and restic setup; nightly schedule; `restic check --read-data-subset` weekly.
 2. Off-site per Q11; document rotation if it's a disk.
 3. Monitoring: the timer writes a status file; the review UI shows "last backup" on its home page (small change in
    D13's template, or a CLI `athena library status`).
 4. BagIt export with validation (`bagit` Python library, Apache-2.0, or a small writer plus a validator).
-5. **Restore test (W7)**: on a clean machine or VM (a Mac laptop or a fresh Ubuntu container), restore the latest
-   snapshot, run `athena library verify` (every original's sha256 matches its name, the SQLite integrity check
-   passes, row counts match the source), rebuild the public site from the restored library and compare with the
-   live build (same item and page lists; images may differ by encoder only).
+5. **Restore test (W7)**: on a clean machine or VM, bring up a **new compose project** (e.g. `athena-restore`) from
+   the latest snapshot: `pg_restore` into its database, originals into its `files` volume; run `athena library
+   verify` (every original's sha256 matches its name, every page's original exists, row and assertion counts
+   match the source, current state matches a rebuild from assertions), rebuild the public site from the restored
+   library and compare with the live build (same item and page lists; images may differ by encoder only).
 
 ## Acceptance criteria
 
 - Nightly backups run to the local disk and the off-site target; `restic check` passes.
-- **Restore test passes**: every original verified by sha256; integrity check passes; counts match; site rebuilt
+- **Restore test passes**: every original verified by sha256; the database restores cleanly; counts match; site rebuilt
   from the restore with the same item and page lists as the source build. Results recorded in `docs/backups.md`
   (counts and timings only).
 - The BagIt export validates and opens without Athena@Home (CSV in a spreadsheet, images in any viewer).
@@ -63,8 +68,8 @@ backups. And the club should hold its own copy in an open format that doesn't ne
 
 ## Test plan
 
-pytest for `snapshot`, `verify` and `export bagit` on fixture libraries; a scripted restore of a fixture library
-from a local restic repo in CI-able form (restic binary pinned); the real restore test in W7 as the experiment.
+pytest for `verify` and `export bagit` on fixture libraries (PostgreSQL from `ATHENA_TEST_DATABASE_URL`); a CI job
+that backs up a fixture compose project and restores it into a second one (restic binary pinned); the real restore test in W7 as the experiment.
 
 ## Privacy and rights
 
@@ -76,8 +81,8 @@ from a local restic repo in CI-able form (restic binary pinned); the real restor
 
 ## Touches
 
-`deploy/backup/`, `athena/library/` (`snapshot`, `verify`, `export bagit`, `status`), `tests/test_backup*.py`,
-`docs/backups.md`.
+`deploy/backup/`, `deploy/compose/library.yml` (the `backup` service), `athena/library/` (`verify`, `export bagit`,
+`status`), `tests/test_backup*.py`, `.github/workflows/ci.yml` (restore job), `docs/backups.md`.
 
 ## Done means
 

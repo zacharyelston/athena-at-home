@@ -22,11 +22,11 @@ tests, so every consumer (review UI, publisher, the choices sheet) gets the same
 - portal.md: tiers (private < members < public), inheritance, narrowing vs widening, policy kinds, effective
   visibility, feeds defined by tiers.
 - D05's EDTF parser (`earliest`, `latest`).
-- D10's schema columns (`visibility`, `redaction`, `policy`, `audit_log`).
+- D10's schema (`visibility`, `redaction` and `policy` columns; the append-only `assertion` table as the audit log).
 
 ## Outputs
 
-- `athena/visibility/` (no I/O in the core; adapters for D10's SQLite):
+- `athena/visibility/` (no I/O in the core; an adapter for D10's PostgreSQL schema):
   - `effective(node, ancestors, policies, today) -> Decision(tier, reasons)` where `reasons` is a readable chain:
     *"series Newsletters: public → policy age-50 caps to members (latest date 1980 is within 50 years) → members"*.
   - `feeds_for(decision, feeds)`: which feeds an item or page goes to.
@@ -83,7 +83,8 @@ tests, so every consumer (review UI, publisher, the choices sheet) gets the same
 
 1. Core types and `effective` with reasons; table-driven tests for every rule.
 2. Policy kinds (workflow, age, content, rights), config parsing with clear errors for unknown keys.
-3. `diff` effect preview; `set_visibility` with audit; SQLite adapter on D10's schema.
+3. `diff` effect preview; `set_visibility` writing a `person:<login>` assertion with the reason; PostgreSQL adapter on
+   D10's schema (effective visibility can also be a SQL view for the publisher's queries, tested against the Python).
 4. CLI: `athena library visibility explain <item>`, `set <path> <tier> --why`, `policies check` (prints the
    effect preview for a changed `library.toml` before it's applied).
 
@@ -99,7 +100,7 @@ tests, so every consumer (review UI, publisher, the choices sheet) gets the same
 ## Test plan
 
 pytest: table-driven rule tests, Hypothesis property tests (Hypothesis is MPL-2.0, a dev-only dependency, fine
-with GPLv3), SQLite adapter tests on D10's schema with fixture items, a time-travel test for the rights cutoff.
+with GPLv3), PostgreSQL adapter tests on D10's schema (skipped without a test database) with fixture items, a time-travel test for the rights cutoff.
 
 ## Privacy and rights
 

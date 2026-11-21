@@ -17,13 +17,13 @@ has to be simple enough to use without the author in the room, on a laptop on th
 
 ## Inputs
 
-- D10's library (`athena library serve` hosts the UI), FTS5 search, OCR failures.
+- D10's library (`athena library serve` in the compose `library` service hosts the UI), its search, OCR failures.
 - D06's OCR policy per material (what "check OCR" means for each).
 - D07's slip photos.
 
 ## Outputs
 
-`athena/library/web/` served by `athena library serve` on the LAN:
+`athena/library/web/` served by `athena library serve` in the `library` container, published on the LAN address only:
 
 - **Browse**: collection → series → items, with counts by status (`new`, `ocr_done`, `reviewed`) and a "next
   item to review" button.
@@ -34,17 +34,18 @@ has to be simple enough to use without the author in the room, on a laptop on th
   stored as a new `text` row with engine `human` and the editor's login; the original OCR row stays).
 - **Mark reviewed**: an item becomes `reviewed` only when title, date (or "undated"), series and type are set and
   every page has an OCR check.
-- **Search** over FTS5 (title and text), with filters by series, decade, type, status.
+- **Search** over D10's full-text index (title and text) and trigram title matches, with filters by series,
+  decade (from the date range), type, status.
 - **Queues**: unreviewed items, OCR failures and dead letters, items in "unsorted".
 - **Logins**: two local accounts (archivist and author) with hashed passwords in the library's data dir, session
-  cookies, and an access log (who viewed or changed what). No public exposure: binds to the LAN, documented as
-  never to be port-forwarded.
+  cookies, and an access log (who viewed or changed what). No public exposure: published on the LAN address only
+  (D22's rule), documented as never to be port-forwarded or given a public Ingress.
 
 ## Steps
 
 1. FastAPI + Jinja2 server-rendered pages; htmx vendored into the package (no CDN); OpenSeadragon vendored for
    zoom over D10's page derivatives.
-2. Item page and metadata form with validation; audit rows on every change (reuses D11's audit log).
+2. Item page and metadata form with validation; every change written as a `person:<login>` assertion (D10's audit log).
 3. OCR check and text edit; review status rules.
 4. Search and queues.
 5. Accessibility: large default text, high contrast, full keyboard use, no time-outs while typing; tested at

@@ -22,7 +22,7 @@ Ancera-specific parts never come across: hostnames, Azure AD identity, the k8s m
 
 | Athena@Home component | Derived from | What changes |
 |---|---|---|
-| **Search service** (semantic index, document catalog) | myvect `store.py`, `chunking.py`, `ingest.py`, `enrich.py` | Text comes from athena-library, not watched folders; one service with FTS5 alongside the vectors; document ids are Athena's, not file paths |
+| **Search service** (semantic index, document catalog) | myvect `store.py`, `chunking.py`, `ingest.py`, `enrich.py` | Text comes from athena-library, not watched folders; full-text and vector search in the library's PostgreSQL; document ids are Athena's, not file paths |
 | **MCP server** (`athena-mcp`) | myvect `mcp_server.py` | Read-only tools over the records, limited by the portal's visibility tiers: cloud clients see public collections only |
 | **OCR request/reply** (`ocr.page`) | HaberDash `deploy/nats/worker/gpu_worker.py` | In-process mlx-vlm instead of an HTTP call to vLLM; per-page tile budget |
 | **Durable OCR jobs** (`ocr.jobs`) | HaberDash `deploy/nats/worker/pdf_ocr_worker.py` | Capture-bundle pages as well as PDFs; retry and dead-letter instead of ack-on-error |
@@ -37,15 +37,16 @@ Ancera-specific parts never come across: hostnames, Azure AD identity, the k8s m
 
 ```
  capture stations ──bundle──► Ubuntu mini ──────────────────────────────────────────────┐
+                              │ compose stack (containers; ADR 0001)                     │
                               │ athena-library                                           │
-                              │   intake ─► originals/ (sha256, write-once)              │
-                              │          ─► library.sqlite: documents, pages, fields,    │
-                              │             FTS5 full-text                                │
-                              │          ─► search index: chunks + embeddings (Chroma)   │
-                              │   search = FTS5 (exact) + vectors (meaning), merged      │
+                              │   intake ─► originals/ (sha256, write-once, volume)      │
+                              │          ─► PostgreSQL: items, pages, assertions,        │
+                              │             full text (tsvector), outbox                 │
+                              │          ─► embeddings: chunks + vectors (pgvector)      │
+                              │   search = full text (exact) + vectors (meaning), merged │
                               │   review queue, records UI, logins, audit log            │
                               │   athena-mcp (read-only, local clients by default)       │
-                              │ nats-server (home operator)                              │
+                              │ nats (container; home operator)                          │
                               └──────────────┬───────────────────────────────────────────┘
                                              │ ocr.page (req/reply) · ocr.jobs (JetStream)
                                        M1 Mac mini: Sieve
@@ -56,12 +57,13 @@ Ancera-specific parts never come across: hostnames, Azure AD identity, the k8s m
 
 ### Search service (derived from myvect)
 
-- **Same core**: paragraph-aware chunks (1,200 characters, 200 overlap), ChromaDB, ONNX all-MiniLM-L6-v2 on the
-  CPU, which runs on the Intel mini. Set `ANONYMIZED_TELEMETRY=False`.
+- **Same core**: paragraph-aware chunks (1,200 characters, 200 overlap), ONNX all-MiniLM-L6-v2 on the CPU, which
+  runs on the Intel mini. Vectors go into the library's PostgreSQL with `pgvector` instead of ChromaDB
+  ([ADR 0001](adr/0001-containers-and-postgres.md)), so there's no second store to run and back up.
 - **Different input**: athena-library hands it each document's tier-1 markdown with its document id, type, date
   and people, instead of the service walking folders. It never sees images, so myvect's PDF/OCR path isn't needed.
 - **Exact plus semantic**: family-records questions are often exact ("account ending 4821", "$1,486.00"), which
-  vector search handles badly. FTS5 answers exact terms, the vectors answer meaning, and the two rankings are
+  vector search handles badly. PostgreSQL full-text search answers exact terms, the vectors answer meaning, and the two rankings are
   merged (reciprocal rank fusion) into a list of documents, not chunks.
 - **Collections instead of boxes**: named per deployment (a household might start with `family` and later
   `finance` for FamilyFinances' text; a club with its series). Each collection carries the portal's visibility tier
@@ -92,27 +94,32 @@ on the M1. Its MCP name is `athena`, so it can't be confused with the work `myve
 
 Revised 2026-11-20 for the first deployment, the Branford Garden Club archive
 ([epic](epics/garden-club-archive/README.md#change-to-the-build-order)): capture moves ahead of the library,
-visibility and the publisher come before extraction, and the search service waits.
+visibility and the publisher come before extraction, and the search service waits. Everything server-side runs
+in containers with PostgreSQL as each library's database ([ADR 0001](adr/0001-containers-and-postgres.md)).
 
 1. **Sieve on the M1**: derive the workers, MLX in process, `ocr.page` first. Check it against the Phase 0 set.
 2. **Home NATS on the Ubuntu mini**: nsc operator and accounts (per deployment: `CAPTURE`, `OCR`, `LIBRARY`, and
-   `FINANCE` for a household), systemd service, TLS, JetStream.
+   `FINANCE` for a household), a container in the site's compose stack, TLS, JetStream.
 3. **Capture bundle spec and a capture tool**: archival description (collection → series → item → page); a folder
    importer for iPhone, flatbed and desk-camera images. OCRX's "Send to library" and a Linux station come later.
-4. **athena-library MVP**: bundle intake, originals store, SQLite + FTS5, `library.events`, the portal's visibility
-   fields and policies in the schema from the start, and libraries as named instances (own data directory, config
-   and address), so one machine can run several. `ocr.jobs` alongside it.
+4. **athena-library MVP** (containers, [ADR 0001](adr/0001-containers-and-postgres.md)): bundle intake, originals
+   store on a volume, PostgreSQL with provenance and full-text search, `library.events` through an outbox, the
+   portal's visibility fields and policies in the schema from the start, and libraries as named instances (one
+   compose project, later one namespace, each with its own database, volumes and config), so one machine or
+   cluster can run several. `ocr.jobs` alongside it.
 5. **Review UI**: metadata, OCR checks, visibility choices and redaction.
 6. **Publisher and static site**: feeds built from a library and a static site with per-tier search; first
    needed for the Branford Garden Club archive. Library-to-library feeds (a guest library, a car) follow.
-7. **Search service**: derive from myvect, index the library's text, search combining FTS5 and vectors.
+7. **Search service**: derive from myvect, index the library's text in `pgvector`, search combining full text and
+   vectors.
 8. **Extraction and review queue thresholds**: tier-2 fields, confidence thresholds, confirm-and-lock.
 9. **athena-mcp**: read-only, gated by visibility tier.
 10. **Live portal** with member logins.
 
 ## Notes
 
-- **Dependency licenses**: ChromaDB, onnxruntime, nats-py, FastAPI and the MCP SDK are Apache-2.0 or MIT. PyMuPDF
+- **Dependency licenses**: onnxruntime, nats-py, FastAPI and the MCP SDK are Apache-2.0 or MIT; PostgreSQL and
+  pgvector use the PostgreSQL License, psycopg 3 is LGPL-3.0, all compatible with GPLv3. PyMuPDF
   (only needed if Athena@Home ingests PDFs) is AGPL-3.0, which combines with GPLv3; its network clause is
   irrelevant on a home LAN but worth noting for the public release. For the extraction model, prefer an
   Apache-2.0 one; myvect's default `llama3.2:3b` uses the Llama Community License, which isn't free software.

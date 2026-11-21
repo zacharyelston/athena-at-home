@@ -53,8 +53,11 @@ next deployment.
 - A capture bundle spec with archival metadata (collection → series → item → page) and a capture tool that turns
   iPhone, flatbed and PIXY images into bundles.
 - A pilot of ~50 real pages that decides the capture method and measures OCR on old material.
-- The library MVP: named instances, write-once originals, SQLite + FTS5, visibility tiers and policies,
-  `library.events`.
+- Containers from the start ([ADR 0001](../../adr/0001-containers-and-postgres.md)): a Docker Compose stack on
+  the Ubuntu mini (site NATS; one project per library) laid out to become a Kustomize-deployed Namespace per
+  library in a home cluster later. Sieve stays native on the M1.
+- The library MVP: named instances, write-once originals on a mounted volume, PostgreSQL with append-only
+  provenance and full-text search, visibility tiers and policies, `library.events` through an outbox.
 - A minimal review UI for metadata, OCR checks, visibility choices and redaction.
 - The publisher (feeds, burned-in redaction, web derivatives and zoom tiles) and a static site with Pagefind
   search per tier, plus an optional members build behind the host's login.
@@ -67,7 +70,9 @@ next deployment.
 | **Live portal** with member logins | A static site plus host auth covers a club; nothing of the club's needs to run on the internet. |
 | **Tier-2 AI extraction** (local LLM fields) | A shoebox is small enough for the archivist to describe items by hand; extraction pays off on larger or ongoing collections. |
 | **athena-mcp** and cloud AI access | No one has asked for it; it widens the privacy surface. |
-| **Vector search service** (myvect-derived) | Pagefind on the site and FTS5 in the library answer exact searches over ~2,500 pages. |
+| **Vector search and the entity graph** (pgvector, entity/relation tables or Apache AGE) | PostgreSQL full-text search in the library and Pagefind on the site answer exact searches over ~2,500 pages; the assertion model leaves room for both. |
+| **Kustomize deployment to a home cluster** | Compose proves the stack on one mini; D22 lays it out so the Kustomize base is a translation. |
+| **Sieve container for NVIDIA GPUs** (vLLM) | The club's OCR runs on the M1, natively. The image is for deployments with NVIDIA hardware. |
 | **Guest and car feeds**, library-to-library sync | Not part of this deployment; the feed format built here is the one they will reuse. |
 | **Corrected transcriptions** of all OCR text | The site labels text as uncorrected machine OCR; the archivist corrects what matters. |
 | **Handwriting recognition** | Untested; the pilot decides whether handwritten pages get any OCR at all. |
@@ -87,28 +92,29 @@ people named). Week numbers are in the calendar below.
 | [D01](D01-archive-survey.md) | Count and sort the shoebox; draft series list; pick the pilot sample | human-archivist | 1 | — | W1 |
 | [D02](D02-ci.md) | CI: tests on Linux, macOS-only skips, SPDX and no-real-records guards | code | 1 | — | W1 |
 | [D03](D03-sieve-on-m1.md) | Sieve on the M1 and ready for its PR | code + ops | 2 | D02 | W1 |
-| [D04](D04-home-nats.md) | Home NATS on the Ubuntu mini (nsc, JetStream, TLS, systemd) | ops | 2 | — | W1–W2 |
+| [D04](D04-home-nats.md) | Home NATS: the site's NATS container (nsc, JetStream, TLS) | ops | 2 | — | W1–W2 |
 | [D05](D05-capture-bundle.md) | Capture bundle spec v1 with archival metadata | code | 2 | — | W1 |
 | [D06](D06-capture-pilot.md) | Capture method pilot: ~50 pages, OCR scoring, decision | ops + human | 3 | D01, D03, D05 | W1–W2 |
 | [D07](D07-capture-tool.md) | Capture tool: import, item grouping, metadata entry, quality checks | code | 3 | D05 | W2 |
 | [D08](D08-permission-and-rights.md) | Permission to digitize and publish; rights inventory | human-archivist | 1 | D01 | W1–W3 |
 | [D09](D09-sieve-ocr-jobs.md) | Sieve `ocr.jobs`: durable queue, retry, dead-letter | code | 3 | D03, D04 | W2 |
-| [D10](D10-library-core.md) | Library MVP: named instances, intake, originals, schema, FTS5, events | code | 4 | D05 | W2–W3 |
+| [D10](D10-library-core.md) | Library MVP: named instances, intake, originals, PostgreSQL schema, search, events | code | 5 | D05, D22 | W2–W3 |
 | [D11](D11-visibility-policies.md) | Visibility tiers, policies and effective visibility | code | 3 | D05 | W2–W3 |
 | [D12](D12-capture-sessions.md) | Capture sessions: runbook, then the whole shoebox | ops + human | 1 + sessions | D06, D07 | W2–W7 |
 | [D13](D13-review-ui.md) | Review UI: metadata, OCR check, review status | code | 3 | D10 | W3 |
 | [D14](D14-visibility-ui.md) | Review UI: visibility choices, policies view, redaction | code | 3 | D11, D13, D15 | W4 |
 | [D15](D15-publisher.md) | Publisher: feeds, redaction burn-in, derivatives, zoom tiles | code | 3 | D10, D11 | W3–W4 |
 | [D16](D16-static-site.md) | Static site: Pagefind per tier, optional members build, leak tests | code | 3 | D15 | W4 |
-| [D17](D17-backups.md) | Backups (3-2-1), restore test, BagIt export | ops | 2 | D10 | W4, W7 |
+| [D17](D17-backups.md) | Backups (3-2-1), restore test, BagIt export | ops | 3 | D10, D22 | W4, W7 |
 | [D18](D18-review-and-club-choices.md) | Archivist's review pass and the club's visibility choices | human-archivist | sessions | D08, D12, D14, D16 | W4–W7 |
 | [D19](D19-hosting-and-launch.md) | Hosting, domain and launch | ops | 2 | D16, D18 | W7–W8 |
 | [D20](D20-handover.md) | Handover guide and training for the archivist and the club | doc | 2 | D14, D17, D19 | W7–W8 |
 | [D21](D21-lessons-learned.md) | Lessons learned and an example deployment config | doc | 1 | D19 | W8 |
+| [D22](D22-compose-stack.md) | Compose stack and the `athena-postgres` image | code + ops | 3 | D02, D04 | W1–W2 |
 
-**Agent work**: 43 days across code, ops and docs deliverables (about 37 of them before the preview), against 18 working
-days before the holidays plus two weeks in January. Three agents in parallel have 54 agent-days before Dec 18, so
-the code is done by the preview with room to spare; the critical path below is what sets the date.
+**Agent work**: 48 days across code, ops and docs deliverables (about 42 of them before the preview), against 18
+working days before the holidays plus two weeks in January. Three agents in parallel have 54 agent-days before
+Dec 18, so the code is done by the preview with some room to spare; the critical path below is what sets the date.
 **Human work**: D01, D08, D12's sessions (about 6–8 sessions of 2–3 hours, decided by D06's throughput numbers)
 and D18.
 
@@ -116,7 +122,7 @@ and D18.
 
 | Week | Dates | Working days | What happens |
 |---|---|---|---|
-| **W1** | Nov 23–27 | 3 (**Thanksgiving** Thu 26, Fri 27 off) | Survey and count (D01); ask for permission (D08); CI (D02); Sieve on the M1 (D03); bundle spec (D05); NATS starts (D04); pilot fixtures and scorer (D06); pilot pages captured if the shoebox is at hand |
+| **W1** | Nov 23–27 | 3 (**Thanksgiving** Thu 26, Fri 27 off) | Survey and count (D01); ask for permission (D08); CI (D02); Sieve on the M1 (D03); bundle spec (D05); NATS starts (D04); compose stack starts (D22); pilot fixtures and scorer (D06); pilot pages captured if the shoebox is at hand |
 | **W2** | Nov 30–Dec 4 | 5 | **Pilot scored and capture method decided by Wed Dec 2** (D06); capture tool (D07); `ocr.jobs` (D09); library core starts (D10); policy engine (D11); runbook (D12); first capture session with separator sheets |
 | **W3** | Dec 7–11 | 5 | Library core done (D10); review UI (D13); publisher starts (D15); capture sessions; first overnight OCR batches |
 | **W4** | Dec 14–18 | 5 | Visibility UI and redaction (D14); static site (D16); backups (D17); **preview site for the archivist and board by Fri Dec 18** (private: local or behind host auth); review pass starts (D18) |
@@ -162,6 +168,10 @@ graph LR
   D15 -.dry run.-> D14
   D15 --> D16[D16 static site]
   D10 --> D17[D17 backups]
+  D02 --> D22[D22 compose stack]
+  D04 --> D22
+  D22 --> D10
+  D22 --> D17
   D08 --> D18[D18 review + club choices]
   D12 --> D18
   D14 --> D18
@@ -183,9 +193,10 @@ run; the rest of D14 starts without it.
 
 ## Critical path
 
-**To the preview (code)**: D05 bundle spec (2) → D10 library core (4) → D15 publisher (3) → D16 static site (3)
-= **12 working days**, against 18 available before Fri Dec 18. D11 runs beside D10 because the policy engine is a
-pure module over the hierarchy D05 defines; it joins D10 for D15.
+**To the preview (code)**: D05 bundle spec (2) → D10 library core (5) → D15 publisher (3) → D16 static site (3)
+= **13 working days**, against 18 available before Fri Dec 18. D22 (the compose stack) runs beside D05 in W1–W2;
+D10 can start against the stock `postgres` image and move onto D22's when it lands. D11 runs beside D10 because the
+policy engine is a pure module over the hierarchy D05 defines; it joins D10 for D15.
 
 **To the launch (people)**: D01 survey → D08 permission → preview (M4) → D18 the club's choices (by Jan 8) → D19
 launch. This is the real critical path: the code is done in December, but the club's permission and decisions
@@ -214,6 +225,7 @@ Capture is the second-longest chain (D01 → D06 → D12 → D18) and has buffer
 | R8 | **Bus factor**: one author, agents' work to integrate | Medium / medium | The site is static (keeps running with nothing of ours online); the club owns the host and domain accounts; BagIt export on a disk for the club; handover guide (D20). |
 | R9 | **Scope creep** (live portal, AI extraction, search service) | Medium / medium | Non-goals above; anything new goes to "later" with a sentence on why. |
 | R10 | **The site doesn't fit the host**: some static hosts cap files per deployment, and Deep Zoom tiles for 2,500 pages run to hundreds of thousands of files | Medium / medium | D15 defaults to a three-size image pyramid (~3 files per page); D16 records size and file count; D19's comparison lists each host's limits. |
+| R11 | **Containers and PostgreSQL add weight** to a one-mini deployment: more to operate, extension versions to keep in step (Apache AGE lags new PostgreSQL majors), and tests that need a database | Medium / low | Pin a PostgreSQL major every included extension supports; AGE optional (the graph is later anyway); a Postgres service container in CI; the compose wrapper makes each library one command; the archivist only ever uses the web UI. |
 
 ## Open questions
 
@@ -232,6 +244,7 @@ Capture is the second-longest chain (D01 → D06 → D12 → D18) and has buffer
 | Q11 | **Off-site backup**: a second encrypted disk kept at the archivist's home, or an encrypted cloud bucket (only ciphertext leaves the house)? | author + club | Fri Dec 11 |
 | Q12 | **Takedown contact**: who on the site receives "please remove this" requests? | club | Fri Jan 8 |
 | Q13 | **After launch**: who adds new items, and does the club want its own copy (a BagIt export on a disk)? | club | Fri Jan 8 |
+| Q14 | **Container images**: build on the mini only, or push to a private registry (e.g. GitHub's container registry, private)? Images hold code only, never records. | author | Fri Dec 4 |
 
 ## Week-1 checklist (Nov 23–25)
 
@@ -243,6 +256,8 @@ People:
 - [ ] Archivist: pick ~50 pilot pages across the decades and material types (D01).
 - [ ] Archivist: send the permission request to the club (D08; template in D08).
 - [ ] Author: confirm the M1 is free for Sieve (FileVault on) and the Ubuntu mini's library disk is encrypted.
+- [ ] Author: install Docker Engine and the compose plugin on the Ubuntu mini (D22), with its data root on the
+      encrypted disk.
 - [ ] Author: get a ruler or printed scale and a grey card for capture; check the iPhone shoots 48 MP.
 - [ ] Author: turn off iCloud Photos on the iPhone used for capture (or use a phone without it), so no record is
       uploaded to the cloud.
@@ -252,11 +267,15 @@ Agents:
 - [ ] D02 CI green on the epic branch, including the no-real-records guard.
 - [ ] D03 Sieve installed on the M1; 31 tests and the end-to-end test pass there; M1 timings recorded.
 - [ ] D05 bundle spec, JSON Schema and validator on `feat/capture-bundle`.
-- [ ] D04 nsc operator and accounts generated; `nats-server` running with JetStream on the Ubuntu mini.
+- [ ] D04 nsc operator and accounts generated; the `athena-site` NATS container running with JetStream.
+- [ ] D22 `athena-postgres` image and the compose layout on `feat/compose-stack`.
 - [ ] D06 synthetic historical fixtures and the pilot scorer, tested in CI.
 
 ## Rules every deliverable follows
 
+- **Containers and PostgreSQL** ([ADR 0001](../../adr/0001-containers-and-postgres.md)): every server-side module
+  is a container configured by environment and mounted files, with data on persistent volumes; PostgreSQL is each
+  library's database. Sieve on Apple Silicon and the capture tools stay native.
 - **Core modules, composed per deployment.** No club or household names in code. Each library is a named instance
   with its own data directory, config and address. Libraries share only through publisher-built feeds. Everything
   is private by default, and the club's choices are configuration. The club's real configuration lives in the
@@ -277,10 +296,14 @@ Agents:
 
 [backend.md](../../backend.md#build-order)'s build order is updated for this deployment:
 
+- **Containers and PostgreSQL from the start** ([ADR 0001](../../adr/0001-containers-and-postgres.md)): a compose
+  stack (D22) comes before the library, and the library's database is PostgreSQL rather than SQLite, so a library
+  can move from a mini to a home cluster (and a business's larger cluster) without a redesign.
+
 - **Capture moves ahead of the library.** The library's intake consumes capture bundles, and the pilot needs
   capture first, so the bundle spec (D05) is the first library-side work and the capture tool (D07) comes before
   the library is finished. It's a folder importer, not OCRX's "Send to library", which stays later.
-- **The search service moves after the publisher, to "later".** FTS5 in the library and Pagefind on the site cover
+- **The search service moves after the publisher, to "later".** PostgreSQL full-text search and Pagefind on the site cover
   a shoebox; vector search earns its place on larger collections.
 - **Visibility tiers, policies and the publisher come before extraction and the review queue's confidence
   thresholds.** The club needs choices and a site; it doesn't need machine-extracted fields.
