@@ -1,12 +1,13 @@
 [project]
 name = "athena-at-home"
 version = "0.1.0"
-description = "Athena@Home: a home capture system that reads, sorts and keeps family records on home machines"
+description = "Athena@Home: capture, OCR, libraries and publishing for family, club and other archives, on their owners' machines"
 readme = "README.md"
 license = "GPL-3.0-or-later"
 license-files = ["COPYING"]
 requires-python = ">=3.11"
-dependencies = []
+# Core modules (capture bundles, and the library and publisher to come)
+dependencies = ["jsonschema>=4.18"]
 
 [project.optional-dependencies]
 # Sieve worker: DeepSeek-OCR-2 via MLX + Apple Vision tier 0 (Apple Silicon macOS only)
@@ -24,13 +25,17 @@ dev = ["pytest>=8", "pytest-asyncio>=0.23", "rapidfuzz>=3", "pillow>=10.0", "num
 
 [project.scripts]
 sieve = "sieve.__main__:main"
+athena = "athena.__main__:main"
 
 [build-system]
 requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = ["sieve"]
+[tool.setuptools.packages.find]
+include = ["sieve*", "athena*"]
+
+[tool.setuptools.package-data]
+"athena.bundle" = ["*.schema.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
