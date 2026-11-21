@@ -23,7 +23,7 @@ Ancera-specific parts never come across: hostnames, Azure AD identity, the k8s m
 | Athena@Home component | Derived from | What changes |
 |---|---|---|
 | **Search service** (semantic index, document catalog) | myvect `store.py`, `chunking.py`, `ingest.py`, `enrich.py` | Text comes from athena-library, not watched folders; one service with FTS5 alongside the vectors; document ids are Athena's, not file paths |
-| **MCP server** (`athena-mcp`) | myvect `mcp_server.py` | Read-only tools over the records; only collections marked shareable; family records never exposed to cloud clients by default |
+| **MCP server** (`athena-mcp`) | myvect `mcp_server.py` | Read-only tools over the records, limited by the portal's visibility tiers: cloud clients see public collections only |
 | **OCR request/reply** (`ocr.page`) | HaberDash `deploy/nats/worker/gpu_worker.py` | In-process mlx-vlm instead of an HTTP call to vLLM; per-page tile budget |
 | **Durable OCR jobs** (`ocr.jobs`) | HaberDash `deploy/nats/worker/pdf_ocr_worker.py` | Capture-bundle pages as well as PDFs; retry and dead-letter instead of ack-on-error |
 | **OCR client** for stations and intake | myvect `src/myvect/ocr.py` (`OcrClient`) | NATS only; no vLLM `extra_body`; tile budget parameter |
@@ -31,6 +31,7 @@ Ancera-specific parts never come across: hostnames, Azure AD identity, the k8s m
 | **Home NATS auth** | HaberDash `docs/nats-fabric-for-other-projects.md` (nsc recipe) | New home operator and accounts; no link to any outside hub |
 | **DeepSeek-OCR-2 loading** | Athena@Home `phase0/bench.py` | Becomes Sieve's model loader |
 | Write-once originals, fields, review queue, records UI, per-person login and audit | nothing comparable | Written new |
+| **Portal**: visibility tiers and policies, publisher, static export, later a live portal | nothing comparable | Written new; see [portal.md](portal.md) |
 
 ## Architecture
 
@@ -62,17 +63,19 @@ Ancera-specific parts never come across: hostnames, Azure AD identity, the k8s m
 - **Exact plus semantic**: family-records questions are often exact ("account ending 4821", "$1,486.00"), which
   vector search handles badly. FTS5 answers exact terms, the vectors answer meaning, and the two rankings are
   merged (reciprocal rank fusion) into a list of documents, not chunks.
-- **Collections instead of boxes**: `family` by default, and later `finance` for FamilyFinances' text. Each
-  collection is marked shareable or not; that flag gates MCP.
+- **Collections instead of boxes**: named per deployment (a household might start with `family` and later
+  `finance` for FamilyFinances' text; a club with its series). Each collection carries the portal's visibility tier
+  (private, members, public), which also gates MCP.
 - **Leave behind** from myvect: Azure AD / oauth2-proxy identity, the dashboard's cross-box endpoints (known
   leaks: `/api/events`, `/api/image`, `/metrics`), git and URL boxes, the amygdala memory tools.
 - **Document summaries** (from `enrich.py`) come later, pointed at a model on the M1.
 
 ### athena-mcp and cloud AI
 
-Anything returned to a cloud model such as Claude leaves the house. athena-mcp is read-only, serves local clients
-by default, and exposes only collections explicitly marked shareable; `family` never is. Everyday questions go to a
-local model on the M1. Its MCP name is `athena`, so it can't be confused with the work `myvect` connector.
+Anything returned to a cloud model such as Claude leaves the owner's machines. athena-mcp is read-only and follows
+the portal's tiers: cloud clients see **public** collections only, members collections need an authenticated local
+client, and private collections (a household's records) are never exposed. Everyday questions go to a local model
+on the M1. Its MCP name is `athena`, so it can't be confused with the work `myvect` connector.
 
 ### Sieve: the OCR worker on the M1 (derived from the HaberDash workers)
 
@@ -90,11 +93,16 @@ local model on the M1. Its MCP name is `athena`, so it can't be confused with th
 1. **Sieve on the M1**: derive the workers, MLX in process, `ocr.page` first. Check it against the Phase 0 set.
 2. **Home NATS on the Ubuntu mini**: nsc operator and accounts (`CAPTURE`, `OCR`, `LIBRARY`, `FINANCE`), systemd
    service, TLS.
-3. **athena-library MVP**: bundle intake from a share, originals store, SQLite + FTS5, `library.events`.
+3. **athena-library MVP**: bundle intake from a share, originals store, SQLite + FTS5, `library.events`, the
+   portal's visibility fields and policies in the schema from the start, and libraries as named instances (own
+   data directory, config and address), so one machine can run several.
 4. **Search service**: derive from myvect, index the library's text, first search page combining FTS5 and vectors.
 5. **Capture**: OCRX "Send to library" writes bundles; a Linux station sends pages through `ocr.page`.
-6. **Extraction and review queue**: tier-2 fields, confidence thresholds, confirm-and-lock.
-7. **athena-mcp**: read-only, shareable collections only.
+6. **Publisher and static site**: feeds built from a library and a static site with per-tier search; first
+   needed for the Branford Garden Club archive. Library-to-library feeds (a guest library, a car) follow.
+7. **Extraction and review queue**: tier-2 fields, confidence thresholds, confirm-and-lock.
+8. **athena-mcp**: read-only, gated by visibility tier.
+9. **Live portal** with member logins.
 
 ## Notes
 
