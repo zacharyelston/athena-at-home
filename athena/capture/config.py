@@ -40,8 +40,8 @@ class CaptureConfig:
     # rest are starting points. A pilot on real material should set them all.
     min_ppi: float = 400.0
     min_ppi_photo: float = 600.0
-    min_sharpness: float = 1.0
-    min_sharpness_photo: float = 0.15
+    min_sharpness: float = 0.8
+    min_sharpness_photo: float = 0.1
     max_glare: float = 0.01
     min_brightness: float = 140.0
     min_evenness: float = 0.75

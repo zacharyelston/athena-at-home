@@ -108,19 +108,20 @@ def judge(cfg: CaptureConfig, m: dict, kind: str, ppi: float | None, camera: boo
     flags, notes = [], []
     if m.get("cut_off"):
         flags.append("the page runs off the edge of the frame")
-    if kind in ("text", "mixed"):
-        if m["sharpness"] < cfg.min_sharpness:
-            flags.append(f"blurred (sharpness {m['sharpness']:.2f}, need {cfg.min_sharpness:g})")
-        elif m["sharpness_min"] < cfg.min_sharpness / 2 and m.get("soft_where"):
-            flags.append(f"soft at the {m['soft_where']} (sharpness {m['sharpness_min']:.2f} there, "
-                         f"need {cfg.min_sharpness / 2:g})")
-    elif kind == "photo" and m["sharpness"] < cfg.min_sharpness_photo:
-        flags.append(f"blurred (sharpness {m['sharpness']:.2f}, need {cfg.min_sharpness_photo:g})")
+    sharp, weakest = m.get("sharpness"), m.get("sharpness_min")
+    if kind != "blank" and sharp is None:
+        notes.append("too little on the page to judge sharpness")
+    elif kind in ("text", "mixed") and sharp < cfg.min_sharpness:
+        flags.append(f"blurred (sharpness {sharp:.2f}, need {cfg.min_sharpness:g})")
+    elif kind == "text" and weakest is not None and weakest < cfg.min_sharpness / 2 and m.get("soft_where"):
+        flags.append(f"soft at the {m['soft_where']} (sharpness {weakest:.2f} there, need {cfg.min_sharpness / 2:g})")
+    elif kind == "photo" and sharp < cfg.min_sharpness_photo:
+        flags.append(f"blurred (sharpness {sharp:.2f}, need {cfg.min_sharpness_photo:g})")
     if camera and kind != "photo" and 0 < m.get("brightness", 0) < cfg.min_brightness:
         flags.append(f"too dark (paper at {m['brightness']:.0f} of 255, need {cfg.min_brightness:g})")
     if camera and m["glare"] > cfg.max_glare:
         flags.append(f"glare on {m['glare']:.0%} of the page (limit {cfg.max_glare:.0%})")
-    if kind in ("text", "blank") and m["evenness"] < cfg.min_evenness:
+    if kind != "photo" and m.get("evenness") is not None and m["evenness"] < cfg.min_evenness:
         flags.append(f"uneven light (darkest part {m['evenness']:.0%} of the brightest, need {cfg.min_evenness:.0%})")
     if m.get("keystone", 0) > cfg.max_keystone:
         flags.append(f"camera not square to the page (one side {m['keystone']:.0%} longer than the other)")

@@ -118,13 +118,16 @@ def test_measures_tell_a_good_capture_from_a_bad_one():
         return page.measure(page.look(ss.photograph(ss.text_page(5), seed=5, **opts))[1])
 
     good, blurred, glare, uneven = m(), m(blur=3.0), m(glare=True), m(uneven=1.1)
-    assert good.sharpness > 1.5 and good.glare < 0.002 and good.evenness > 0.93 and 200 < good.brightness < 250
+    assert good.sharpness > 1.2 and good.glare < 0.002 and good.evenness > 0.93 and 200 < good.brightness < 250
     assert blurred.sharpness < 0.5 and blurred.laplacian_var < 25 < good.laplacian_var     # OCRX's target agrees
     assert glare.glare > 0.05
     assert uneven.evenness < 0.75
     photo = page.measure(page.look(ss.photograph(ss.photo_page(5), seed=5))[1])
     soft_photo = page.measure(page.look(ss.photograph(ss.photo_page(5), seed=5, blur=3.0))[1])
-    assert photo.sharpness > 0.25 > 0.15 > soft_photo.sharpness
+    assert photo.sharpness > 0.1 > soft_photo.sharpness
+    assert photo.evenness is None or photo.kind == "photo"         # a picture's tones are not the lighting
+    blank = page.measure(page.look(ss.photograph(ss.blank_page(5), seed=5))[1])
+    assert blank.sharpness is None and blank.kind == "blank" and blank.evenness > 0.93
 
 
 def test_a_page_running_off_the_frame_is_not_cropped():
@@ -135,6 +138,51 @@ def test_a_page_running_off_the_frame_is_not_cropped():
 def test_a_scan_that_fills_the_frame_is_left_alone():
     found, _ = page.look(ss.text_page(1, 200))
     assert not found.cropped and not found.cut_off and found.size == (1700, 2200)
+
+
+HISTORICAL = ("mimeo_newsletter", "typed_minutes", "news_clipping", "program_page", "handwritten_note")
+
+
+def historical(name: str, ppi: int = 150):
+    """A made-up page in a historical style (phase0/gen_testset.py): faint, soft-inked, yellowed or with a picture."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "phase0"))
+    import gen_testset
+    rgb = gen_testset.render_historical(name)[1]
+    return cv2.resize(rgb, (round(8.5 * ppi), round(11 * ppi)), interpolation=cv2.INTER_AREA)
+
+
+@pytest.mark.parametrize("name", HISTORICAL)
+def test_old_materials_pass_when_captured_well_and_fail_when_blurred(name):
+    cfg = CaptureConfig(min_ppi=100)
+
+    def flags(frame, camera):
+        found, small = page.look(frame)
+        m = page.measure(small)
+        metrics = {"sharpness": m.sharpness, "sharpness_min": m.sharpness_min, "soft_where": m.soft_where,
+                   "glare": m.glare, "evenness": m.evenness, "brightness": m.brightness, "keystone": found.keystone,
+                   "cut_off": found.cut_off}
+        return found, session.judge(cfg, metrics, m.kind, 150.0, camera, found.cropped)[0]
+
+    drawn = historical(name)
+    found, problems = flags(drawn, camera=False)                   # a clean scan
+    assert not found.cropped and problems == []
+    found, problems = flags(ss.photograph(drawn, seed=6), camera=True)
+    assert found.cropped and problems == []
+    _, problems = flags(ss.photograph(drawn, seed=6, blur=3.0), camera=True)
+    assert len(problems) == 1 and problems[0].startswith("blurred")
+    _, problems = flags(ss.photograph(drawn, seed=6, uneven=1.1), camera=True)
+    assert any(f.startswith("uneven light") for f in problems)    # (faint ink in bad light may read as soft too)
+
+
+def test_a_scan_with_a_picture_on_it_is_not_cropped_to_the_picture():
+    drawn = historical("program_page")                             # a large photograph in the middle of the page
+    found, small = page.look(drawn)
+    assert not found.cropped and found.size == (drawn.shape[1], drawn.shape[0])
+    assert page.measure(small).kind in ("text", "mixed")
+    on_table, _ = page.look(ss.photograph(drawn, seed=2))          # ... but the page itself is still found on a table
+    assert on_table.cropped and on_table.size[0] / on_table.size[1] == pytest.approx(8.5 / 11, rel=0.02)
+    dark_print, _ = page.look(ss.photograph(ss.photo_page(2), seed=2))
+    assert dark_print.cropped                                      # and so is a photographic print
 
 
 def test_judge_names_each_problem():
@@ -156,7 +204,10 @@ def test_judge_names_each_problem():
     assert "runs off the edge" in flags(cut_off=True)[0][0]
     assert flags(ppi=310.0)[0] == ["ppi 310 < 400"]
     assert flags(kind="photo", ppi=450.0, sharpness=0.4)[0] == ["ppi 450 < 600"]
-    assert flags(kind="blank", sharpness=0.0, sharpness_min=0.0)[0] == []
+    assert flags(kind="blank", sharpness=None, sharpness_min=None) == ([], [])
+    assert flags(sharpness=None, sharpness_min=None) == ([], ["too little on the page to judge sharpness"])
+    assert flags(kind="mixed", sharpness_min=0.2, evenness=None) == ([], [])     # soft pictures beside sharp type
+    assert "blurred" in flags(kind="photo", ppi=700.0, sharpness=0.05)[0][0]
     assert flags(ppi=None) == ([], ["resolution not measured (no scale card in the frame)"])
     assert "page edges not found" in flags(cropped=False)[1][0]
 

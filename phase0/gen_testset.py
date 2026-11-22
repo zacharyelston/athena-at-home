@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Render synthetic household documents with exact ground truth for the Phase 0 OCR benchmark.
+"""Render synthetic documents with exact ground truth: the household pages of the Phase 0 OCR benchmark, and the
+historical styles (mimeograph, typewriter, newsprint, a program with a photograph, handwriting) for the capture pilot.
 
 Every name, number and address here is made up. Pages are drawn at 300 DPI (US Letter), then resampled to the
 benchmark DPIs in two conditions:
@@ -39,6 +40,18 @@ FONTS = {
                       (f"{_DJV}/DejaVuSansMono.ttf", 0)],
     ("georgia", False): [(f"{_MAC}/Supplemental/Georgia.ttf", 0), (f"{_LIB}/LiberationSerif-Regular.ttf", 0),
                          (f"{_DJV}/DejaVuSerif.ttf", 0)],
+    ("georgia", True): [(f"{_MAC}/Supplemental/Georgia Bold.ttf", 0), (f"{_LIB}/LiberationSerif-Bold.ttf", 0),
+                        (f"{_DJV}/DejaVuSerif-Bold.ttf", 0)],
+    ("serif", True): [(f"{_MAC}/Supplemental/Times New Roman Bold.ttf", 0), (f"{_LIB}/LiberationSerif-Bold.ttf", 0),
+                      (f"{_DJV}/DejaVuSerif-Bold.ttf", 0)],
+    ("italic", False): [(f"{_MAC}/Supplemental/Times New Roman Italic.ttf", 0), (f"{_LIB}/LiberationSerif-Italic.ttf", 0),
+                        (f"{_DJV}/DejaVuSerif.ttf", 0)],
+    ("mono", True): [(f"{_MAC}/Supplemental/Courier New Bold.ttf", 0), (f"{_LIB}/LiberationMono-Bold.ttf", 0),
+                     (f"{_DJV}/DejaVuSansMono-Bold.ttf", 0)],
+    # A cursive hand. No Linux font is one, so CI falls back to an italic: the ground truth is the same, and the
+    # tests check the scorer, not how well any engine reads handwriting.
+    ("script", False): [(f"{_MAC}/Supplemental/SnellRoundhand.ttc", 0), (f"{_MAC}/Supplemental/Bradley Hand Bold.ttf", 0),
+                        (f"{_LIB}/LiberationSerif-Italic.ttf", 0), (f"{_DJV}/DejaVuSerif.ttf", 0)],
 }
 
 
@@ -319,12 +332,230 @@ DOCS = {"bank_statement": bank_statement, "utility_bill": utility_bill, "insuran
 def camera_degrade(img, rng):
     """Mild blur, uneven light, noise and JPEG: a deskewed camera capture, not a flatbed scan."""
     a = cv2.GaussianBlur(img.astype(np.float32), (0, 0), 0.7)
-    h, w = a.shape
+    h, w = a.shape[:2]
     yy, xx = np.mgrid[0:h, 0:w]
     cx, cy = w * rng.uniform(0.35, 0.65), h * rng.uniform(0.3, 0.6)
     light = 1.05 - 0.18 * (((xx - cx) / w) ** 2 + ((yy - cy) / h) ** 2) * 2
+    if a.ndim == 3:
+        light = light[..., None]
     a = a * light + rng.normal(0, 4, a.shape)
     return np.clip(a, 0, 255).astype(np.uint8)
+
+
+# ---------------------------------------------------------------- historical styles
+# What a club's or a family's shoebox holds, as well as modern print: mimeograph, typewriter, newsprint columns, a
+# typeset program with a photograph, a handwritten note. Every name, date and place is made up. Each is drawn in
+# grey like the pages above (so the ground truth comes from the same layout helper), then given its paper and ink.
+
+def _column(p, s, f, x, width_px, gap=0.22):
+    """A wrapped paragraph at ``x``, recorded line by line: columns read top to bottom, then left to right."""
+    line = ""
+    for word in s.split():
+        t = (line + " " + word).strip()
+        if p.d.textlength(t, font=f) > width_px and line:
+            p.text(line, f, x=x, gap=gap)
+            line = word
+        else:
+            line = t
+    if line:
+        p.text(line, f, x=x, gap=gap)
+
+
+def _keys(p, *items):
+    p.fields.extend(items)
+
+
+def mimeo_newsletter():
+    p = Page(margin_in=1.0)
+    f, fb = font("mono", 11), font("mono", 11, True)
+    p.text("RIVERSIDE GARDEN SOCIETY", font("mono", 15, True), gap=0.3)
+    p.text("News Letter            Spring 1962            No. 14", fb, gap=0.6)
+    p.paragraph("The annual Flower Show will be held Saturday, May 12, at the Grange Hall on Mill Road. Entries "
+                "are received from nine until eleven in the morning, and judging begins promptly at noon.", f, 6.4)
+    p.space(0.15)
+    p.paragraph("Mrs. Eleanor Whitcombe is chairman of the show this year, with Mrs. Arthur Pennell in charge of "
+                "the tea table. Members are asked to bring one arrangement and one specimen bloom.", f, 6.4)
+    p.space(0.2)
+    p.text("COMING EVENTS", fb, gap=0.4)
+    for when, what in [("April 10", "Regular meeting, 2 o'clock, at the Library"),
+                       ("April 24", "Workshop on forcing bulbs"),
+                       ("May 12", "Flower Show, Grange Hall"),
+                       ("June 5", "Garden tour and picnic, bring a box lunch")]:
+        p.row([when, what], f, [p.m, int(2.7 * MASTER_DPI)], gap=0.4)
+    p.space(0.2)
+    p.paragraph("The plant sale cleared $86.40, which the board voted to put toward the planting at the station. "
+                "Our thanks to the twenty-three members who potted divisions.", f, 6.4)
+    _keys(p, "May 12", "Grange Hall", "Eleanor Whitcombe", "Arthur Pennell", "$86.40", "Spring 1962", "No. 14")
+    return p
+
+
+def typed_minutes():
+    p = Page(margin_in=1.1)
+    f = font("mono", 11.5)
+    p.text("MINUTES OF THE REGULAR MEETING", font("mono", 12, True), gap=0.25)
+    p.text("October 9, 1951", f, gap=0.7, field=True)
+    p.paragraph("The meeting was called to order at 2:15 p.m. by the President, Mrs. Harold Finch, at the home of "
+                "Mrs. Walter Ames. Nineteen members answered the roll.", f, 6.2, gap=0.45)
+    p.space(0.15)
+    p.paragraph("The minutes of the September meeting were read and approved. The Treasurer reported a balance on "
+                "hand of $214.37, with all bills paid.", f, 6.2, gap=0.45)
+    p.space(0.15)
+    p.paragraph("It was moved by Mrs. Ames and seconded by Miss Clara Dunmore that the Society give ten dollars "
+                "toward the elm on the Green. The motion carried.", f, 6.2, gap=0.45)
+    p.space(0.15)
+    p.paragraph("Mrs. Lyle Bassett spoke on the wintering of roses. The meeting adjourned at 4 o'clock.", f, 6.2,
+                gap=0.45)
+    p.space(0.5)
+    p.text("Respectfully submitted,", f, gap=0.45)
+    p.text("Clara Dunmore, Secretary", f)
+    _keys(p, "Harold Finch", "Walter Ames", "$214.37", "Clara Dunmore", "Lyle Bassett", "2:15 p.m.", "Nineteen")
+    return p
+
+
+def news_clipping():
+    p = Page(margin_in=0.9)
+    p.text("GARDEN SOCIETY PLANTS 400 BULBS ON TOWN GREEN", font("serif", 19, True), gap=0.3)
+    p.text("Members Turn Out Despite Rain; Station Beds Next", font("italic", 12), gap=0.6)
+    f = font("serif", 9.5)
+    gutter = int(0.22 * MASTER_DPI)
+    width = (W - 2 * p.m - 2 * gutter) // 3
+    top = p.y
+    columns = [
+        "RIVERSIDE, Oct. 14 - Two dozen members of the Riverside Garden Society spent Saturday morning setting "
+        "four hundred tulip and daffodil bulbs in the beds along the north side of the Town Green. The bulbs were "
+        "bought with the proceeds of the spring plant sale. Mrs. Harold Finch, president, said the planting was the "
+        "largest the Society has undertaken since it was founded in 1928.",
+        "Rain fell for most of the morning, but the work was finished before noon. Selectman George Tarbell sent a "
+        "town truck with loam, and boys from the Grange carried water. Coffee was served under the bandstand by "
+        "Mrs. Arthur Pennell and her committee. The beds were laid out by Miss Clara Dunmore from a plan drawn the "
+        "winter before.",
+        "The Society will next replant the two beds at the railroad station, where the old privet is to come out. "
+        "Anyone with perennials to spare is asked to leave them at the Library on Elm Street before October 28. "
+        "The next regular meeting will be held November 13 at two o'clock, when the speaker will be Mr. Owen Hale "
+        "of the County Extension Service.",
+    ]
+    for i, text in enumerate(columns):
+        p.y = top
+        _column(p, text, f, p.m + i * (width + gutter), width)
+    _keys(p, "Oct. 14", "George Tarbell", "Owen Hale", "1928", "October 28", "November 13", "Elm Street")
+    return p
+
+
+def program_page():
+    p = Page(margin_in=1.0)
+    centre = W // 2
+
+    def centred(s, f, gap=0.35, field=False):
+        p.text(s, f, x=centre - int(p.d.textlength(s, font=f)) // 2, gap=gap, field=field)
+
+    centred("RIVERSIDE GARDEN SOCIETY", font("georgia", 20, True), gap=0.25)
+    centred("Year Book  1958 - 1959", font("georgia", 14), gap=0.7, field=True)
+    # A halftone-like "photograph": soft tones and a few shapes, no text.
+    x0, x1, y0 = int(1.6 * MASTER_DPI), W - int(1.6 * MASTER_DPI), p.y
+    y1 = y0 + int(3.3 * MASTER_DPI)
+    rng = np.random.default_rng(58)
+    tone = cv2.resize(rng.uniform(60, 200, (9, 13)).astype(np.float32), (x1 - x0, y1 - y0),
+                      interpolation=cv2.INTER_CUBIC)
+    for _ in range(7):
+        cx, cy = int(rng.uniform(0.1, 0.9) * (x1 - x0)), int(rng.uniform(0.3, 0.9) * (y1 - y0))
+        cv2.ellipse(tone, (cx, cy), (int(0.16 * MASTER_DPI), int(0.42 * MASTER_DPI)), 0, 0, 360,
+                    float(rng.uniform(30, 110)), -1)
+    p.img.paste(Image.fromarray(np.clip(tone, 0, 255).astype(np.uint8)), (x0, y0))
+    p.y = y1 + int(0.12 * MASTER_DPI)
+    centred("Members at the Spring Flower Show, May 1958. Left to right: Mrs. Ruth Alden,", font("italic", 9.5),
+            gap=0.25)
+    centred("Mrs. Lyle Bassett, Miss Clara Dunmore and Mrs. Harold Finch.", font("italic", 9.5), gap=1.1)
+    centred("OFFICERS", font("georgia", 13, True), gap=0.5)
+    f = font("georgia", 11.5)
+    for office, name in [("President", "Mrs. Harold Finch"), ("Vice President", "Mrs. Walter Ames"),
+                         ("Recording Secretary", "Miss Clara Dunmore"), ("Treasurer", "Mrs. Ruth Alden"),
+                         ("Program Chairman", "Mrs. Eleanor Whitcombe")]:
+        p.row([office, name], f, [int(1.9 * MASTER_DPI), W - int(1.9 * MASTER_DPI)], ["l", "r"], gap=0.5)
+    p.space(0.3)
+    centred("Organized 1928        Federated 1934", font("georgia", 10.5))
+    _keys(p, "May 1958", "Ruth Alden", "Harold Finch", "Walter Ames", "Eleanor Whitcombe", "1928", "1934")
+    return p
+
+
+def handwritten_note():
+    p = Page(margin_in=1.2)
+    f = font("script", 21)
+    p.text("June 3, 1947", f, x=int(4.6 * MASTER_DPI), gap=0.9, field=True)
+    p.text("Dear Clara,", f, gap=0.7)
+    for line in ["Thank you for the slips of the white phlox.", "They have taken well by the south wall.",
+                 "I shall bring the minute book on Tuesday", "and the receipts from the plant sale.",
+                 "Mrs. Ames has promised her peonies", "for the church on the fifteenth."]:
+        p.text(line, f, gap=0.55)
+    p.space(0.4)
+    p.text("Affectionately,", f, x=int(3.8 * MASTER_DPI), gap=0.6)
+    p.text("Ruth Alden", f, x=int(4.2 * MASTER_DPI))
+    _keys(p, "Clara", "Ruth Alden", "Tuesday", "Mrs. Ames")
+    return p
+
+
+def _ink_on_paper(density, paper, ink):
+    d = np.clip(density, 0, 1)[..., None]
+    return np.clip(np.array(paper, np.float32) * (1 - d) + np.array(ink, np.float32) * d, 0, 255).astype(np.uint8)
+
+
+def _blotches(shape, rng, cells, lo, hi):
+    """Low-frequency variation between ``lo`` and ``hi``: uneven inking, foxed or sun-browned paper."""
+    small = rng.uniform(lo, hi, cells).astype(np.float32)
+    return cv2.resize(small, (shape[1], shape[0]), interpolation=cv2.INTER_CUBIC)
+
+
+def style_mimeograph(gray, rng):
+    """Purple ink that has bled into soft paper, heavier in some places than others."""
+    d = cv2.GaussianBlur(1 - gray.astype(np.float32) / 255, (0, 0), 1.6)
+    d = np.clip(d * 1.5, 0, 1) * _blotches(gray.shape, rng, (9, 7), 0.45, 1.0)
+    d += (rng.random(gray.shape) > 0.9993) * 0.5                    # specks from the stencil
+    return _ink_on_paper(d, (236, 229, 210), (96, 62, 138))
+
+
+def style_typewriter(gray, rng):
+    """Carbon-ribbon type: each strike a little lighter or heavier, on bond gone slightly cream."""
+    d = cv2.GaussianBlur(1 - gray.astype(np.float32) / 255, (0, 0), 0.9)
+    d = np.clip(d * 1.25, 0, 1) * _blotches(gray.shape, rng, (60, 46), 0.6, 1.0)
+    return _ink_on_paper(d, (241, 237, 226), (34, 33, 38))
+
+
+def style_newsprint(gray, rng):
+    """Small type on paper that has yellowed unevenly, with the grain showing."""
+    d = cv2.GaussianBlur(1 - gray.astype(np.float32) / 255, (0, 0), 0.8) * 0.9
+    page = _ink_on_paper(d, (224, 206, 160), (46, 40, 32)).astype(np.float32)
+    page *= _blotches(gray.shape, rng, (7, 5), 0.88, 1.03)[..., None]
+    page += rng.normal(0, 5, gray.shape)[..., None]
+    return np.clip(page, 0, 255).astype(np.uint8)
+
+
+def style_typeset(gray, rng):
+    """Letterpress on ivory stock; the halftone keeps its greys."""
+    return _ink_on_paper(1 - gray.astype(np.float32) / 255, (244, 240, 228), (28, 26, 24))
+
+
+def style_handwriting(gray, rng):
+    """Blue-black fountain-pen ink, a little uneven, on notepaper."""
+    d = cv2.GaussianBlur(1 - gray.astype(np.float32) / 255, (0, 0), 0.7)
+    d = np.clip(d * 1.2, 0, 1) * _blotches(gray.shape, rng, (40, 30), 0.7, 1.0)
+    return _ink_on_paper(d, (240, 236, 222), (32, 42, 98))
+
+
+# name -> (layout, style, material). The material names are the ones a capture bundle's physical.format uses.
+HISTORICAL = {
+    "mimeo_newsletter": (mimeo_newsletter, style_mimeograph, "mimeograph"),
+    "typed_minutes": (typed_minutes, style_typewriter, "typewritten"),
+    "news_clipping": (news_clipping, style_newsprint, "newsprint"),
+    "program_page": (program_page, style_typeset, "typeset"),
+    "handwritten_note": (handwritten_note, style_handwriting, "handwriting"),
+}
+
+
+def render_historical(name, seed=23):
+    """One historical page: (the layout with its ground truth, the styled page as an RGB array, its material)."""
+    layout, style, material = HISTORICAL[name]
+    p = layout()
+    rng = np.random.default_rng(seed + sorted(HISTORICAL).index(name))
+    return p, style(np.array(p.img), rng), material
 
 
 def main(out=None):
@@ -346,6 +577,23 @@ def main(out=None):
             cv2.imwrite(os.path.join(d, f"camera_{dpi}.jpg"), camera_degrade(img, rng),
                         [cv2.IMWRITE_JPEG_QUALITY, 88])
         print(f"{name}: {len(p.lines)} lines, {len(p.fields)} key fields")
+    rng = np.random.default_rng(29)        # its own stream, so the pages above come out exactly as in Phase 0
+    for name in HISTORICAL:
+        p, master, material = render_historical(name)
+        d = os.path.join(out, name)
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, "gt.txt"), "w") as fh:
+            fh.write("\n".join(p.lines) + "\n")
+        with open(os.path.join(d, "fields.json"), "w") as fh:
+            json.dump(p.fields, fh, indent=1)
+        with open(os.path.join(d, "material.txt"), "w") as fh:
+            fh.write(material + "\n")
+        for dpi in DPIS:
+            img = cv2.resize(master, (int(8.5 * dpi), int(11 * dpi)), interpolation=cv2.INTER_AREA)
+            cv2.imwrite(os.path.join(d, f"clean_{dpi}.png"), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+            cv2.imwrite(os.path.join(d, f"camera_{dpi}.jpg"),
+                        cv2.cvtColor(camera_degrade(img, rng), cv2.COLOR_RGB2BGR), [cv2.IMWRITE_JPEG_QUALITY, 88])
+        print(f"{name} ({material}): {len(p.lines)} lines, {len(p.fields)} key fields")
 
 
 if __name__ == "__main__":

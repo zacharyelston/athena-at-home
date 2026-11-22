@@ -41,11 +41,11 @@ class Found:
 @dataclass
 class Measured:
     kind: str                        # text | photo | mixed | blank (a guess)
-    sharpness: float
-    sharpness_min: float             # the softest ninth of the page that has anything on it
+    sharpness: float | None          # None when there's too little on the page to judge
+    sharpness_min: float | None      # of the softest ninth that has anything on it
     soft_where: str                  # "", or e.g. "lower right"
     glare: float                     # fraction of the page blown out to white
-    evenness: float                  # 1 = evenly lit; 0.75 = the darker parts are a quarter dimmer
+    evenness: float | None           # 1 = evenly lit; 0.75 = the darker parts are a quarter dimmer; None: no bare paper
     marks: float                     # fraction of the page with anything on it
     brightness: float = 0.0          # level of the bare paper, 0-255
     laplacian_var: float = 0.0
@@ -90,6 +90,18 @@ def _bright(blur: np.ndarray) -> np.ndarray:
     return cv2.morphologyEx(otsu, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8))
 
 
+def _lighter_than_rim(blur: np.ndarray, quad: np.ndarray) -> bool:
+    """Paper is lighter than the table it lies on. The other way round, a dark shape with a light surround, is a
+    photograph or a drawing *on* a page that fills the frame: cropping to it would throw the page away."""
+    gray = cv2.cvtColor(blur, cv2.COLOR_RGB2GRAY)
+    h, w = gray.shape
+    t = max(4, min(h, w) // 50)
+    rim = np.concatenate([gray[:t].ravel(), gray[-t:].ravel(), gray[:, :t].ravel(), gray[:, -t:].ravel()])
+    inside = np.zeros((h, w), np.uint8)
+    cv2.fillConvexPoly(inside, quad.astype(np.int32), 1)
+    return float(np.percentile(gray[inside > 0], 90)) > float(np.median(rim)) + 12
+
+
 def find_paper(small: np.ndarray) -> tuple[np.ndarray | None, bool]:
     """The paper's four corners in the reduced copy (or None), and whether a page-sized thing runs off the frame.
 
@@ -117,7 +129,8 @@ def find_paper(small: np.ndarray) -> tuple[np.ndarray | None, bool]:
                 approx = cv2.approxPolyDP(hull, eps * cv2.arcLength(hull, True), True)
                 if len(approx) == 4:
                     quad = _order(approx.reshape(4, 2).astype(np.float64))
-                    if hull_area / max(cv2.contourArea(quad.astype(np.float32)), 1.0) >= 0.93:
+                    if (hull_area / max(cv2.contourArea(quad.astype(np.float32)), 1.0) >= 0.93
+                            and _lighter_than_rim(blur, quad)):
                         return quad, False
         if cut_off:
             break
@@ -199,15 +212,18 @@ def measured_ppi(found: Found, tag_mm: float) -> float | None:
 _NINTHS = (("upper left", "top", "upper right"), ("left", "centre", "right"), ("lower left", "bottom", "lower right"))
 
 
-def _sharpness(gray: np.ndarray) -> float:
-    """How abrupt the strongest edges are, 0 to about 1: the top 0.5% of second differences against the tonal range.
-    Unlike a plain variance, it doesn't rise just because a page has more text on it."""
-    lo, hi = np.percentile(gray, (2, 98))
+def _sharpness(gray: np.ndarray, marked: np.ndarray) -> float | None:
+    """How abrupt the edges are where there is anything on the paper: the strong second differences among the marked
+    pixels, against the tonal range. None when there is too little to judge. Unlike a plain variance it doesn't rise
+    just because a page has more text, and empty paper doesn't dilute it."""
+    if int(marked.sum()) < 150:
+        return None
+    lo, hi = np.percentile(gray, (0.5, 99.5))
     contrast = float(hi - lo)
     if contrast < 12:
-        return 0.0
+        return None
     lap = np.abs(cv2.Laplacian(gray, cv2.CV_32F, ksize=3))
-    return round(float(np.percentile(lap, 99.5)) / (2 * contrast), 3)
+    return round(float(np.percentile(lap[marked], 90)) / (2 * contrast), 3)
 
 
 def measure(small_page: np.ndarray) -> Measured:
@@ -240,24 +256,35 @@ def measure(small_page: np.ndarray) -> Measured:
 
     glare = float((inner.min(axis=2) >= 250).mean())
 
-    soft = []
+    # Sharpness of the page as a whole, and of each ninth with enough on it to judge: the softest ninth says where
+    # focus fell off.
+    marked = detail > 14
+    ninths = []
     for r in range(3):
         for c in range(3):
             rows, cols = slice(r * gh // 3, (r + 1) * gh // 3), slice(c * gw // 3, (c + 1) * gw // 3)
-            if float((detail[rows, cols] > 14).mean()) >= 0.01:
-                soft.append((_sharpness(gray[rows, cols]), _NINTHS[r][c]))
-    overall = _sharpness(gray) if kind != "blank" else 0.0
-    weakest = min(soft) if soft else (overall, "")
+            if float(marked[rows, cols].mean()) >= 0.03:
+                value = _sharpness(gray[rows, cols], marked[rows, cols])
+                if value is not None:
+                    ninths.append((value, _NINTHS[r][c]))
+    overall = _sharpness(gray, marked)
+    weakest = min(ninths) if ninths else (overall, "")
 
-    # Evenness, after OCRX: the spread between the darker and the brighter parts of the page.
-    lo, hi = np.percentile(levels, (10, 90))
-    evenness = max(0.0, 1 - (hi - lo) / max(hi, 1.0)) if kind != "photo" else 1.0
+    # Evenness, after OCRX: the spread between the darker and the brighter parts of the page, over the cells that
+    # are mostly bare paper (a photograph or a dark heading is not a shadow).
+    flat = [float(levels[r, c]) for r in range(8) for c in range(8)
+            if float((np.abs(gray[r * gh // 8:(r + 1) * gh // 8, c * gw // 8:(c + 1) * gw // 8].astype(np.float32)
+                             - levels[r, c]) <= 0.12 * levels[r, c]).mean()) >= 0.5]
+    evenness = None
+    if len(flat) >= 8:
+        lo, hi = np.percentile(flat, (10, 90))
+        evenness = round(max(0.0, 1 - (hi - lo) / max(hi, 1.0)), 3)
 
     # OCRX's sharpness (noise-suppressed variance of the Laplacian, page at 1200 pixels), recorded so a pilot on real
     # pages can compare it with the measure above. It rises with the amount of text, so it isn't judged here.
     ref, _ = reduce(gray, 1200)
     laplacian_var = float(cv2.Laplacian(cv2.GaussianBlur(ref, (3, 3), 0), cv2.CV_64F).var())
-    return Measured(kind=kind, sharpness=overall, sharpness_min=round(weakest[0], 3), soft_where=weakest[1],
-                    glare=round(glare, 4), evenness=round(evenness, 3), marks=round(marks, 4),
+    return Measured(kind=kind, sharpness=overall, sharpness_min=weakest[0], soft_where=weakest[1],
+                    glare=round(glare, 4), evenness=evenness, marks=round(marks, 4),
                     brightness=round(paper, 1), laplacian_var=round(laplacian_var, 1),
                     extra={"paper_fraction": round(paper_fraction, 3)})

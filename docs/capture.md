@@ -81,6 +81,10 @@ all round it**; a dark, matte cloth is best. When it can't find four clean edges
 patterned table) the whole frame is kept and the report notes it. A page that runs off the frame is put on the
 re-shoot list. Nothing is ever lost either way: the raw file is kept as captured.
 
+Paper is lighter than what it lies on. A dark shape with a light surround is taken to be a photograph or a
+drawing *on* a page that fills the frame, and is never cropped to: so a scan of a program with a large picture
+stays whole. (The price: a page on a table paler than the paper isn't cropped either.)
+
 `--rotate 90|180|270` turns every frame first, for pages that lie sideways in the photographs.
 
 ## The re-shoot list
@@ -90,10 +94,10 @@ a copy reduced to 1,600 pixels on its long side, so the numbers mean the same fo
 
 | Reason | Measure | Default | Setting |
 |---|---|---|---|
-| blurred | how abrupt the strongest edges are, against the page's tonal range | ≥ 1.0 for text, ≥ 0.15 for photographs | `min_sharpness`, `min_sharpness_photo` |
-| soft at one edge | the same, in the weakest ninth of the page that has anything on it | ≥ half of `min_sharpness` | |
+| blurred | how abrupt the edges are wherever there is anything on the paper, against the page's tonal range | ≥ 0.8 for text, ≥ 0.1 for photographs | `min_sharpness`, `min_sharpness_photo` |
+| soft at one edge | the same, in the weakest ninth of a page of text that has enough on it to judge | ≥ half of `min_sharpness` | |
 | glare | fraction of the page blown out to white (cameras only: a scanner's white is not glare) | ≤ 1% | `max_glare` |
-| uneven light | spread between the darker and brighter parts of the bare paper | ≥ 75% | `min_evenness` |
+| uneven light | spread between the darker and brighter parts of the bare paper (pictures and dark headings left out) | ≥ 75% | `min_evenness` |
 | too dark | level of the bare paper, 0–255 (cameras only) | ≥ 140 | `min_brightness` |
 | low resolution | measured ppi | ≥ 400, ≥ 600 for photographs | `min_ppi`, `min_ppi_photo` |
 | camera not square | one side of the page longer than its opposite | ≤ 8% | `max_keystone` |
@@ -104,7 +108,10 @@ thresholds are starting points: **the pilot on real pages (D06) should set them.
 own sharpness (variance of the Laplacian) beside the one judged here, so the pilot can compare them.
 
 Sharpness is judged at roughly the scale OCR reads a page, so it catches a missed focus or a moved camera, not the
-slight softness visible only at full magnification.
+slight softness visible only at full magnification. It is measured only where there is something on the paper, so a
+nearly empty page isn't called soft, and soft-inked material (mimeograph, pencil, newsprint) passes when captured
+well: on the synthetic styles, well-captured pages score 1.0 to 2.1 and blurred ones 0.1 to 0.7. A page with too
+little on it to judge gets a note instead.
 
 **Kind** is a guess from the page's tones: `blank` (nothing on it), `photo` (mostly continuous tone), `mixed`, or
 `text`. It can't tell handwriting from print; the describe form can set it.
@@ -204,9 +211,11 @@ sheets and slips, and everything about items, bundles and staging.
 
 ## Tests
 
-`tests/test_capture.py` and `tests/test_capture_web.py` (50 tests), on sessions rendered at test time by
+`tests/test_capture.py` and `tests/test_capture_web.py`, on sessions rendered at test time by
 `tests/fixtures/synthetic_session.py`: made-up pages "photographed" with tilt, perspective, uneven light, blur and
-glare, with separator sheets and a scale card. The Apple Vision test carries the `macos` marker.
+glare, with separator sheets and a scale card. The measures are also run over the made-up historical styles of
+`phase0/gen_testset.py` (mimeograph, typewriter, newsprint, a program with a photograph, handwriting): each must
+pass when captured well and fail when blurred. The Apple Vision test carries the `macos` marker.
 
 ```bash
 python tests/fixtures/synthetic_session.py /tmp/session --ppi 300    # a session folder to try by hand
