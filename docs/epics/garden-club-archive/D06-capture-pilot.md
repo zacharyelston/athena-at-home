@@ -32,7 +32,7 @@ them.
    ink, bleed, uneven inking), typewriter, two- and three-column newsprint clipping on yellowed paper, a program
    or yearbook page with a photo block and caption, and a cursive "handwritten" page from a script font. Ground
    truth as before. These test the scorer in CI and give a synthetic baseline.
-2. **`pilot/`**: `capture_to_bundles.py` (a folder of images → bundles, minimal; D07 replaces it), `run.py`
+2. **`pilot/`**: bundles come from `athena capture import` (D07 is built, so no stand-in is needed); `run.py`
    (OCR every page with Apple Vision and DeepSeek-OCR-2 at auto and 6 tiles), `score.py`, `report.py`.
 3. **Scores** (run locally; real outputs stay on the library disk):
    - ~15 pages with **ground truth**: typed by the archivist or author from the paper (not by correcting OCR
@@ -49,6 +49,11 @@ them.
    - D12's session estimate (pages per hour → number of sessions);
    - whether bf16 or 6 fixed tiles are worth it on any material;
    - storage estimate for D10/D17.
+
+6. **Capture-tool settings** for the deployment's `[capture]` section, from the pilot pages: `min_sharpness` and
+   `min_sharpness_photo` (compare with OCRX's Laplacian figure, which `quality.json` records beside them),
+   `min_ppi`, `max_glare`, `min_evenness`, `min_brightness`. Also confirm on real captures: the page finder on the
+   actual table surface, the kind guess per material, and that 48 MP HEIC files from the iPhone are read.
 
 ## Decision criteria (agreed before the scores come in)
 

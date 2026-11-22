@@ -19,7 +19,7 @@ against D01's count.
 ## Inputs
 
 - D06 decision note (method per material, ppi targets, pages per hour).
-- D07 tool (`separator`, `import`, `check`, `describe`).
+- D07 tool (`athena capture sheets`, `check`, `import`, `describe`, `send`; `docs/capture.md` on `feat/capture-tool`).
 - D01 survey (groups, counts, condition notes, original order photo).
 
 ## Outputs
@@ -32,16 +32,17 @@ against D01's count.
 ## Runbook contents
 
 1. **Before**: charge the iPhone, clean the lens, set 48 MP (HEIF Max or ProRAW per D06), lock exposure and focus
-   on a stand; lamps at 45° on both sides, no overhead light (glare); scale and grey card in frame; print
-   separator sheets; clean, dry hands (no lotion); clear table; the archivist chooses the groups for the session.
-2. **During**: one group at a time in original order; separator sheet before each item; an item slip (title,
-   date if known) photographed after the separator; versos captured when they carry anything; bound items open
+   on a stand; lamps at 45° on both sides, no overhead light (glare); one plain, dark, matte surface that shows
+   all round every page (the tool finds the page against it); the printed scale card flat beside every page, and
+   a grey card; print separator sheets and scale cards (`athena capture sheets`, at 100%; check the ruler); clean, dry hands (no lotion); clear table; the archivist chooses the groups for the session.
+2. **During**: one group at a time in original order; separator sheet before each item, with the item's slip (title,
+   date if known, where it's kept) written in the sheet's box or laid on it; versos captured when they carry anything; bound items open
    no wider than they want to; no unfolding of brittle folds (note it and move on); photos on the flatbed per
    D06; return each item to its folder before taking the next.
 3. **Before packing up**: `athena capture check` on the session folder; re-shoot anything flagged; copy the
    session folder to the second disk (R5); fill in the capture log.
-4. **After**: `athena capture import` into the library's intake; `describe` the items (now, or later in the review
-   UI); OCR runs overnight; next morning, check the library for rejected bundles and OCR failures.
+4. **After**: `athena capture import` (into staging); `athena capture describe` the items from their slips (now,
+   or later in the review UI); `athena capture send` to the library's intake; OCR runs overnight; next morning, check the library for rejected bundles and OCR failures.
 
 ## Session plan
 

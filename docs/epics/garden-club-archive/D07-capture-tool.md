@@ -8,7 +8,25 @@
 | **Size** | 3 days |
 | **Depends on** | D05 (bundle spec); D06's decision shapes defaults but doesn't block the start |
 | **Week** | W2 |
-| **Branch** | `feat/capture-tool` (from `feat/capture-bundle`) |
+| **Branch** | `feat/capture-tool` (from `feat/static-site`, the top of the stack: it reads the library's config) |
+
+> **Built** on `feat/capture-tool` (2026-11-21); usage and settings are in `docs/capture.md` on that branch.
+> Commands: `athena capture sheets | check | import | staged | describe | send | discard`. As built:
+> - `import` writes bundles into a **staging directory**; `describe` completes them there; `send` moves them to the
+>   library's intake (complete or not at all). This keeps the intake watcher from taking a bundle mid-description.
+> - The item slip is written in a box on the separator sheet itself; the importer cuts the box out, upright.
+> - Resolution comes from an **AprilTag scale card** beside each page (within 1% on fixtures), which also restores
+>   the page's proportions; flatbed scans use their own metadata.
+> - Page outline, tag scale and the glare, evenness and brightness measures are adapted from the author's OCRX
+>   (marked as derived), with its tuned targets as defaults.
+> - Dates are typed as written on the slip ("about 1958", "1960s", "April 1962") and stored as EDTF by
+>   `athena.bundle.edtf.from_text`, which D13 reuses. Ambiguous numeric dates (4/5/1962) are refused.
+> - The describe form listens on 127.0.0.1 only, checks its own token and origin, runs no script.
+> - Measured on synthetic 49 MP frames (16 GB M3): check 0.4 s a frame, import 0.7 s a frame with four workers.
+>
+> **Not done:** nothing here has seen a real capture. The sharpness and resolution thresholds, the page finder on
+> the real table, and reading a real 48 MP iPhone HEIC all wait for the pilot (D06). DNG/ProRAW files are skipped
+> with a message. Pages photographed sideways need `--rotate`. Tier 0 on Linux is left to Sieve, as planned.
 
 ## Why
 

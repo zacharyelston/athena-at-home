@@ -28,7 +28,8 @@ has to be simple enough to use without the author in the room, on a laptop on th
 - **Browse**: collection → series → items, with counts by status (`new`, `ocr_done`, `reviewed`) and a "next
   item to review" button.
 - **Item page**: page thumbnails; a large page viewer with zoom; the OCR text beside it (tier 1, with tier 0 for
-  comparison); the slip photo; the metadata form (title, EDTF date with the same helper as D07, series, type,
+  comparison); the slip photo; the metadata form (title, EDTF date with the same helper as D07
+  (`athena.bundle.edtf.from_text`), series, type,
   creator, physical location, format, tags, notes); flags (`looped`, `hit_cap`, OCR failure).
 - **OCR check**: per page, mark "OCR good", "OCR usable (uncorrected)", "image only", or edit the text (an edit is
   stored as a new `text` row with engine `human` and the editor's login; the original OCR row stays).
