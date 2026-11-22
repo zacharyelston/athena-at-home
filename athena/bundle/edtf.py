@@ -177,3 +177,95 @@ def display(text: str | None) -> str:
     if end in ("", ".."):
         return f"from {_display_part(start)}"
     return f"{_display_part(start)}–{_display_part(end)}"
+
+
+# --- from what someone would write on a slip ----------------------------------------------------------------------
+
+_MONTH_WORDS = {name[:3].lower(): i for i, name in enumerate(_MONTHS, start=1)}
+_SEASON_WORDS = {"spring": 21, "summer": 22, "autumn": 23, "fall": 23, "winter": 24}
+_UNDATED = {"", "undated", "no date", "n.d.", "nd", "n.d", "unknown", "none", "?"}
+_CIRCA = re.compile(r"^(?:circa|ca\.?|c\.|c|about|around|approx\.?|approximately|roughly)\s+(.+)$")
+_HELP = ("write a date like 1962, April 1962, April 17 1962, spring 1962, about 1958, 1960s, 1960-1965, "
+         "before 1970, or leave it empty for an undated item")
+
+
+def _month(word: str) -> int | None:
+    word = word.rstrip(".").lower()
+    return _MONTH_WORDS.get(word[:3]) if len(word) >= 3 and word.isalpha() else None
+
+
+def _plain(text: str) -> str:
+    """One date, without "circa" or a range, as EDTF."""
+    t = re.sub(r"\s+", " ", text.replace(",", " ")).strip().lower()
+    t = re.sub(r"\b(\d{1,2})(st|nd|rd|th)\b", r"\1", t)
+    t = re.sub(r"\b(the|of)\b ?", "", t).strip()
+    if is_valid(t.upper()) and "/" not in t:
+        return t.upper()
+    if m := re.fullmatch(r"(\d{3})0'?s", t):                              # 1960s
+        return f"{m.group(1)}X"
+    if m := re.fullmatch(r"(\w+) (\d{4})", t):                            # April 1962, spring 1962
+        if m.group(1) in _SEASON_WORDS:
+            return f"{m.group(2)}-{_SEASON_WORDS[m.group(1)]}"
+        if mo := _month(m.group(1)):
+            return f"{m.group(2)}-{mo:02d}"
+    if m := re.fullmatch(r"([a-z]+\.?) (\d{1,2}) (\d{4})", t):            # April 17 1962
+        if mo := _month(m.group(1)):
+            return f"{m.group(3)}-{mo:02d}-{int(m.group(2)):02d}"
+    if m := re.fullmatch(r"(\d{1,2}) ([a-z]+\.?) (\d{4})", t):            # 17 April 1962
+        if mo := _month(m.group(2)):
+            return f"{m.group(3)}-{mo:02d}-{int(m.group(1)):02d}"
+    if m := re.fullmatch(r"(\d{1,2})[/.](\d{1,2})[/.](\d{4})", t):        # 4/17/1962
+        a, b, y = int(m.group(1)), int(m.group(2)), m.group(3)
+        if a > 12 >= b:
+            return f"{y}-{b:02d}-{a:02d}"
+        if b > 12 >= a or a == b:
+            return f"{y}-{a:02d}-{b:02d}"
+        raise EdtfError(f"{text.strip()!r} could be read two ways (which number is the month?); "
+                        "write the month as a word, like April 5 1962")
+    if m := re.fullmatch(r"(\d{1,2})[/.](\d{4})", t):                     # 4/1962
+        return f"{m.group(2)}-{int(m.group(1)):02d}"
+    if re.search(r"(^|[ '/.-])\d{2}$", t) and not re.search(r"\d{4}", t):
+        raise EdtfError(f"{text.strip()!r}: write the year in full (1962, not 62)")
+    raise EdtfError(f"can't read {text.strip()!r} as a date; {_HELP}")
+
+
+def _one(text: str) -> str:
+    t = text.strip()
+    unsure = t.endswith("?")
+    t = t.rstrip("?").strip()
+    circa = _CIRCA.match(t.lower())
+    if circa:
+        t = circa.group(1)
+    body = _plain(t)
+    if body[-1] in "?~%":
+        return body
+    return body + {(True, True): "%", (True, False): "~", (False, True): "?", (False, False): ""}[bool(circa), unsure]
+
+
+def from_text(text: str | None) -> str | None:
+    """EDTF from what an archivist would write on a slip: "April 1962", "about 1958", "1960s", "1960-1965",
+    "spring 1962", "before 1970". Valid EDTF passes through. Returns None for an undated item; raises EdtfError,
+    with examples, for anything it can't read. Numeric dates are accepted only when they can be read one way."""
+    raw = re.sub(r"\s+", " ", (text or "").replace("–", "-").replace("—", "-")).strip()
+    if raw.lower() in _UNDATED:
+        return None
+    if is_valid(raw):
+        return raw
+    low = raw.lower()
+    out = None
+    if m := re.fullmatch(r"(?:before|earlier than) (\d{4})", low):
+        out = f"../{int(m.group(1)) - 1}"
+    elif m := re.fullmatch(r"(?:after|later than) (\d{4})", low):
+        out = f"{int(m.group(1)) + 1}/.."
+    elif m := re.fullmatch(r"(?:until|by|up to|no later than) (.+)", low):
+        out = f"../{_one(m.group(1))}"
+    elif m := re.fullmatch(r"(?:from|since|no earlier than) (.+?)(?: on(?:wards?)?)?", low):
+        if " to " not in m.group(1) and " - " not in m.group(1):
+            out = f"{_one(m.group(1))}/.."
+    if out is None:
+        m = (re.fullmatch(r"(?:between|from) (.+?) (?:and|to|-) (.+)", low)
+             or re.fullmatch(r"(.+?) (?:to|through|thru|-) (.+)", low)
+             or re.fullmatch(r"(\d{4}[?~]?)\s*-\s*(\d{4}[?~]?)", low))
+        out = f"{_one(m.group(1))}/{_one(m.group(2))}" if m else _one(raw)
+    parse(out)      # e.g. an interval that ends before it starts
+    return out

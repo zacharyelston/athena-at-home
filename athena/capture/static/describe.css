@@ -1,0 +1,28 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+:root { color-scheme: light dark; --ink: #1f2421; --paper: #fbfaf7; --line: #b9b6ad; --accent: #2c5f2d; --warn: #9a2a14; }
+@media (prefers-color-scheme: dark) { :root { --ink: #ecebe6; --paper: #1b1d1b; --line: #55584f; --accent: #9ccf9d; --warn: #ffb4a2; } }
+* { box-sizing: border-box; }
+body { margin: 0; font: 1.1rem/1.5 system-ui, sans-serif; color: var(--ink); background: var(--paper); }
+header { display: flex; gap: 1.5rem; justify-content: space-between; flex-wrap: wrap; padding: .6rem 1rem; border-bottom: 1px solid var(--line); }
+header span { opacity: .8; font-size: .95rem; }
+main { padding: 1rem; max-width: 78rem; margin: 0 auto; }
+a { color: var(--accent); }
+h1 { font-size: 1.6rem; margin: .4rem 0 1rem; } h2 { font-size: 1.2rem; margin: 1.2rem 0 .4rem; }
+.columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2rem; align-items: start; }
+@media (max-width: 60rem) { .columns { grid-template-columns: 1fr; } }
+label { display: block; font-weight: 600; margin-top: .9rem; }
+input, select, textarea { font: inherit; color: inherit; background: transparent; border: 1px solid var(--line); border-radius: .3rem; padding: .45rem .55rem; width: 100%; }
+td select { width: auto; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button, .button { font: inherit; font-weight: 600; padding: .55rem 1rem; border-radius: .3rem; border: 1px solid var(--accent); background: var(--accent); color: var(--paper); cursor: pointer; text-decoration: none; display: inline-block; margin: .3rem .5rem .3rem 0; }
+.hint { margin: .2rem 0 0; font-size: .95rem; opacity: .85; }
+kbd { font: inherit; border: 1px solid var(--line); border-radius: .2rem; padding: 0 .25rem; white-space: nowrap; }
+.warn { color: var(--warn); font-weight: 600; margin: .2rem 0; }
+.ok { border-left: .3rem solid var(--accent); padding: .4rem .8rem; }
+.errors { border: 2px solid var(--warn); border-radius: .3rem; padding: .2rem 1rem; }
+table { border-collapse: collapse; width: 100%; } th, td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
+fieldset { border: 1px solid var(--line); border-radius: .3rem; margin: 1.2rem 0 0; } legend { font-weight: 600; }
+img { max-width: 100%; height: auto; border: 1px solid var(--line); background: #fff; }
+td img { max-height: 6rem; width: auto; }
+.slip { display: block; }
+.pages { list-style: decimal inside; display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: .8rem; padding: 0; }

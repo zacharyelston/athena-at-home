@@ -3,6 +3,7 @@ from datetime import date
 
 import pytest
 
+from athena.bundle import edtf
 from athena.bundle.edtf import EdtfError, parse
 
 D = date
@@ -59,3 +60,37 @@ def test_years_helpers():
 def test_rejects(text):
     with pytest.raises(EdtfError):
         parse(text)
+
+
+# --- dates as someone would write them on a slip ----------------------------------------------------------------
+
+@pytest.mark.parametrize("written, stored", [
+    ("1962", "1962"), ("April 1962", "1962-04"), ("Apr. 17, 1962", "1962-04-17"), ("17 April 1962", "1962-04-17"),
+    ("April 17th, 1962", "1962-04-17"), ("spring 1962", "1962-21"), ("Fall of 1958", "1958-23"),
+    ("about 1958", "1958~"), ("c. 1958", "1958~"), ("circa April 1962", "1962-04~"), ("1960s", "196X"),
+    ("1960's", "196X"), ("1960-1965", "1960/1965"), ("1960 – 1965", "1960/1965"),
+    ("between 1960 and 1965", "1960/1965"), ("from 1960 to 1965", "1960/1965"),
+    ("April 1962 to June 1962", "1962-04/1962-06"), ("before 1970", "../1969"), ("after 1945", "1946/.."),
+    ("until 1969", "../1969"), ("since 1960", "1960/.."), ("1962?", "1962?"), ("April 1962?", "1962-04?"),
+    ("about 1958?", "1958%"), ("4/17/1962", "1962-04-17"), ("17/4/1962", "1962-04-17"), ("4/1962", "1962-04"),
+    ("  1962-21 ", "1962-21"), ("196X", "196X"), ("1960/1969", "1960/1969"), ("../1969", "../1969"),
+])
+def test_from_text_reads_what_is_on_a_slip(written, stored):
+    assert edtf.from_text(written) == stored
+    assert edtf.from_text(stored) == stored          # and EDTF itself passes through
+    edtf.parse(stored)
+
+
+@pytest.mark.parametrize("written", ["", "  ", "undated", "n.d.", "No date", "unknown", None])
+def test_from_text_undated(written):
+    assert edtf.from_text(written) is None
+
+
+@pytest.mark.parametrize("written, says", [
+    ("4/5/1962", "could be read two ways"), ("'62", "year in full"), ("April 62", "year in full"),
+    ("sometime", "write a date like 1962"), ("1965-1960", "ends before it starts"), ("Feb 30 1962", "no such day"),
+    ("the sixties", "write a date like"),
+])
+def test_from_text_refuses_what_it_cannot_read_and_says_how_to_write_it(written, says):
+    with pytest.raises(edtf.EdtfError, match=says):
+        edtf.from_text(written)

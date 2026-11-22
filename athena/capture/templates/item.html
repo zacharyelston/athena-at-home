@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{{ form.title or "Describe an item" }}{% endblock %}
+{% block main %}
+<h1>{{ form.title or "Describe this item" }}</h1>
+{% if saved %}<p class="ok" role="status">Saved.{% if date_words %} Date understood as <strong>{{ date_words }}</strong> (stored as <code>{{ form.date }}</code>).{% endif %}</p>{% endif %}
+{% if errors %}
+<div class="errors" role="alert"><p>Not saved:</p><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+<div class="columns">
+<section aria-label="The item">
+{% if slip %}<h2>Slip</h2><img class="slip" src="/item/{{ id }}/slip.jpg" alt="Photograph of the item's handwritten slip">{% endif %}
+<h2>Pages</h2>
+<p class="hint">Select a page to see it larger.</p>
+<ol class="pages">
+{% for p in pages %}
+<li>
+<a href="/item/{{ id }}/page/{{ p.n }}.jpg?size=view" target="_blank" rel="noopener"><img src="/item/{{ id }}/page/{{ p.n }}.jpg?size=thumb" alt="Page {{ p.n }}" loading="lazy"></a>
+{% for f in p.flags %}<p class="warn">Shoot again: {{ f }}</p>{% endfor %}
+</li>
+{% endfor %}
+</ol>
+</section>
+<form method="post" action="/item/{{ id }}">
+<input type="hidden" name="token" value="{{ token }}">
+<h2>Description</h2>
+<p class="hint">Only the series is needed now. Anything left empty can be filled in later, in the library.</p>
+<label for="series">Series</label>
+{% if series_choices %}
+<select id="series" name="series">
+{% for slug, title in series_choices %}<option value="{{ slug }}"{% if slug == form.series %} selected{% endif %}>{{ title }}</option>{% endfor %}
+</select>
+{% else %}
+<input id="series" name="series" value="{{ form.series }}" required>
+{% endif %}
+<label for="title">Title</label>
+<input id="title" name="title" value="{{ form.title }}" autofocus>
+<label for="date">Date</label>
+<input id="date" name="date" value="{{ form.date }}" aria-describedby="date-hint">
+<p class="hint" id="date-hint">As it is on the slip: <kbd>1962</kbd>, <kbd>April 1962</kbd>, <kbd>April 17 1962</kbd>, <kbd>spring 1962</kbd>, <kbd>about 1958</kbd>, <kbd>1960s</kbd>, <kbd>1960-1965</kbd>, <kbd>before 1970</kbd>. Leave it empty if there's no date.</p>
+<label for="type">Type</label>
+{% if type_choices %}
+<select id="type" name="type"><option value="">(not set)</option>
+{% for t in type_choices %}<option value="{{ t }}"{% if t == form.type %} selected{% endif %}>{{ t }}</option>{% endfor %}
+</select>
+{% else %}
+<input id="type" name="type" value="{{ form.type }}">
+{% endif %}
+<label for="creator">Made by</label>
+<input id="creator" name="creator" value="{{ form.creator }}">
+<label for="container">Kept in</label>
+<input id="container" name="container" value="{{ form.container }}" aria-describedby="container-hint">
+<p class="hint" id="container-hint">Where the paper lives, for example: box 1, folder 3.</p>
+<label for="format">Made how</label>
+<input id="format" name="format" value="{{ form.format }}" aria-describedby="format-hint">
+<p class="hint" id="format-hint">For example: typeset, typewritten, mimeograph, photocopy, newsprint, photo print.</p>
+<label for="extent">Extent</label>
+<input id="extent" name="extent" value="{{ form.extent }}" placeholder="{{ pages|length }} page{{ '' if pages|length == 1 else 's' }}">
+<label for="condition">Condition</label>
+<input id="condition" name="condition" value="{{ form.condition }}">
+<label for="tags">Tags</label>
+<input id="tags" name="tags" value="{{ form.tags }}" aria-describedby="tags-hint">
+<p class="hint" id="tags-hint">Separate with commas.</p>
+<label for="notes">Notes</label>
+<textarea id="notes" name="notes" rows="3">{{ form.notes }}</textarea>
+<fieldset>
+<legend>Each page</legend>
+<table>
+<thead><tr><th scope="col">Page</th><th scope="col">Side</th><th scope="col">What's on it</th></tr></thead>
+<tbody>
+{% for p in pages %}
+<tr><th scope="row">{{ p.n }}</th>
+<td><select name="side_{{ p.n }}" aria-label="Side of page {{ p.n }}">{% for s in sides %}<option{% if s == p.side %} selected{% endif %}>{{ s }}</option>{% endfor %}</select></td>
+<td><select name="kind_{{ p.n }}" aria-label="What's on page {{ p.n }}">{% for k in kinds %}<option{% if k == p.kind %} selected{% endif %}>{{ k }}</option>{% endfor %}</select></td></tr>
+{% endfor %}
+</tbody>
+</table>
+</fieldset>
+<p><button type="submit" name="then" value="stay">Save</button>
+<button type="submit" name="then" value="next">Save and go to the next item</button></p>
+</form>
+</div>
+{% endblock %}

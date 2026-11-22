@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{% block title %}Describe items{% endblock %}</title>
+<link rel="stylesheet" href="/static/describe.css">
+</head>
+<body>
+<header><a href="/">Items waiting</a><span>Station {{ station }}: this page is only on this computer</span></header>
+<main>
+{% block main %}{% endblock %}
+</main>
+</body>
+</html>

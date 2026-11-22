@@ -2,6 +2,7 @@
 """Athena@Home command line.
 
   athena bundle validate DIR...   check capture bundles (schema, files, checksums, pages, dates)
+  athena capture sheets|check|import|staged|describe|send|discard
   athena library setup|intake|ingest|ocr|search|publish-events|status
   athena library explain|set-visibility|reviews|check-policies
   athena publish build|check|diff
@@ -53,9 +54,11 @@ def main(argv=None) -> int:
     v.add_argument("--json", action="store_true", help="print results as JSON")
     v.set_defaults(func=_bundle_validate)
 
+    from .capture.cli import add_parser as add_capture
     from .library.cli import add_parser as add_library
     from .publish.cli import add_parser as add_publish
     from .site.cli import add_parser as add_site
+    add_capture(sub)
     add_library(sub)
     add_publish(sub)
     add_site(sub)

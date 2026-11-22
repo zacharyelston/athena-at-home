@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block main %}
+<h1>Items waiting to be sent</h1>
+{% if not items %}
+<p>Nothing is waiting. Import a session folder with <code>athena capture import</code>.</p>
+{% else %}
+<p>{{ items|length }} item{{ "" if items|length == 1 else "s" }}, {{ undescribed }} without a title.
+{% if next_id %}<a class="button" href="/item/{{ next_id }}">Describe the next one</a>{% endif %}</p>
+<table>
+<thead><tr><th scope="col">First page</th><th scope="col">Title</th><th scope="col">Series</th><th scope="col">Date</th>
+<th scope="col">Pages</th><th scope="col">To shoot again</th></tr></thead>
+<tbody>
+{% for it in items %}
+<tr>
+<td><a href="/item/{{ it.id }}"><img src="/item/{{ it.id }}/page/1.jpg?size=thumb" alt="First page of item {{ loop.index }}" loading="lazy"></a></td>
+<td><a href="/item/{{ it.id }}">{{ it.title or "Not described yet" }}</a></td>
+<td>{{ it.series }}</td>
+<td>{{ it.date }}</td>
+<td>{{ it.pages }}</td>
+<td>{% if it.flags %}<strong class="warn">{{ it.flags }}</strong>{% else %}none{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% endif %}
+{% endblock %}

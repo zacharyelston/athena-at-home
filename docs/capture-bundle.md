@@ -9,8 +9,9 @@ Version 1 adds archival description, so an archive can say where each item belon
 **collection → series → item → page**.
 
 **One bundle is one item**: a newsletter issue, a yearbook, a clipping, a photo, the minutes of one meeting. A
-capture session produces many bundles. A bundle is **immutable** once written; later corrections to its
-description are made in the library, which keeps the bundle as it arrived.
+capture session produces many bundles. A bundle's files never change once written. Its description may be completed
+at the capture station while the bundle waits in [staging](capture.md#describing-items); once it is sent to a library
+it is **immutable**, and later corrections are made in the library, which keeps the bundle as it arrived.
 
 ## Layout
 
@@ -20,7 +21,7 @@ description are made in the library, which keeps the bundle as it arrived.
   raw/001.<ext>              the master, byte for byte as captured: heic, heif, jpg, jpeg, png, tif, tiff, dng
   pages/001.jpg              cropped and deskewed at full resolution: jpg (q95) or png
   quick/001.json             Apple Vision tier-0 lines (optional; Sieve adds tier 0 later when a station can't)
-  quality.json               per page: sharpness, glare, evenness, skew, measured ppi (optional)
+  quality.json               per page: sharpness, glare, evenness, skew… and the reasons to shoot it again (optional)
   slip.jpg                   photo of a handwritten item slip, to help describe the item later (optional)
 ```
 
@@ -166,8 +167,8 @@ Exit status 0 when every bundle is valid (warnings allowed), 1 otherwise.
 
 During a capture session a printed **separator sheet** marks the start of each item, so a run of photos can be split
 into bundles. It carries a QR code whose text is `ATHENA-ITEM-BREAK/1` (`athena.bundle.SEPARATOR_PAYLOAD`) and a box
-for a handwritten item slip. The capture tool prints and detects them; the version suffix lets the sheet change
-later without misreading old ones.
+for a handwritten item slip, which becomes the bundle's `slip.jpg`. The [capture tool](capture.md) prints and detects
+them (`athena capture sheets`); the version suffix lets the sheet change later without misreading old ones.
 
 ## Changing the format
 

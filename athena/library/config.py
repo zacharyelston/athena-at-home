@@ -146,7 +146,7 @@ def from_dict(raw: dict, env: dict | None = None, source_path: Path | None = Non
     env = os.environ if env is None else env
     lib = raw.get("library") or {}
     unknown = set(raw) - {"library", "collection", "series", "vocabulary", "ocr", "nats", "policy", "feed", "publish",
-                          "site"}
+                          "site", "capture"}
     if unknown:
         raise ConfigError(f"unknown config sections: {sorted(unknown)}")
     if raw.get("site") is not None:      # the site builder reads [site.*] itself; catch mistakes in it here too
@@ -154,6 +154,12 @@ def from_dict(raw: dict, env: dict | None = None, source_path: Path | None = Non
         try:
             sites_from_dict(raw["site"], source_path.parent if source_path else None)
         except SiteConfigError as e:
+            raise ConfigError(str(e)) from None
+    if raw.get("capture") is not None:   # likewise the capture tool's [capture]
+        from athena.capture.config import CaptureConfigError, section_from_dict
+        try:
+            section_from_dict(raw["capture"])
+        except CaptureConfigError as e:
             raise ConfigError(str(e)) from None
     name = _slug(lib.get("name"), "library.name")
 

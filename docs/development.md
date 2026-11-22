@@ -4,8 +4,8 @@
 
 ```bash
 uv venv --python 3.12 .venv
-uv pip install --python .venv/bin/python -e ".[client,library,dev]"  # any platform
-uv pip install --python .venv/bin/python -e ".[sieve,client,dev]"    # Apple Silicon: adds MLX and Apple Vision
+uv pip install --python .venv/bin/python -e ".[client,library,site,capture,dev]"  # any platform
+uv pip install --python .venv/bin/python -e ".[sieve,client,library,site,capture,dev]"  # Apple Silicon: adds MLX and Apple Vision
 brew install nats-server                                             # or a release binary on Linux
 ```
 
@@ -27,6 +27,9 @@ Markers (registered in `pyproject.toml`, applied in `tests/conftest.py`):
 
 Library tests need PostgreSQL: they start a throwaway server with `initdb` (Homebrew's `postgresql@14` or later on a
 Mac, the `postgresql` package on Linux), or use `ATHENA_TEST_DATABASE_URL` if it's set, and skip otherwise.
+
+Capture tests render their own session folders (`tests/fixtures/synthetic_session.py`): made-up pages "photographed"
+on a table with separator sheets and a scale card. They need the `capture` extra and skip without it.
 
 Tests that need neither use fakes (`FakeEngine`, canned tier-0 lines) and run everywhere, including CI.
 
@@ -57,5 +60,5 @@ Code derived from the author's earlier projects says so under the SPDX line:
 
 ## CI
 
-`.github/workflows/ci.yml`: the guards, then the tests on Ubuntu with Python 3.11 and 3.12 (`.[client,dev]`, a
+`.github/workflows/ci.yml`: the guards, then the tests on Ubuntu with Python 3.11 and 3.12 (every extra but `sieve`, a
 pinned and checksum-verified `nats-server`). MLX, Apple Vision and end-to-end tests skip there.

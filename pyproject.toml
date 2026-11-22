@@ -25,9 +25,14 @@ library = ["psycopg[binary]>=3.2", "nats-py[nkeys]>=2.7", "pillow>=10.0"]
 # The static site builder: templates (Jinja2, BSD-3-Clause) and in-browser search (Pagefind, MIT; pinned, because
 # the site's leak check reads the index format it writes). Checking a site also uses the library extra's Pillow.
 site = ["jinja2>=3.1", "pagefind[bin]==1.6.0"]
+# The capture tool: page finding and the printed sheets (OpenCV, Apache-2.0), HEIC from phones (pillow-heif,
+# BSD-3-Clause; its wheels carry libheif and libde265, LGPL, and x265, GPL-2.0-or-later), and the describe form
+# (FastAPI and Uvicorn, MIT and BSD-3-Clause; Jinja2). Apple Vision text comes with the sieve extra on a Mac.
+capture = ["opencv-python-headless>=4.9", "numpy>=1.26", "pillow>=10.1", "pillow-heif>=0.16", "fastapi>=0.110",
+           "uvicorn>=0.29", "jinja2>=3.1"]
 # Tests on any platform (CI runs Linux with .[client,dev]); MLX and Apple Vision tests skip where unavailable
 dev = ["pytest>=8", "pytest-asyncio>=0.23", "rapidfuzz>=3", "pillow>=10.0", "numpy>=1.26", "opencv-python-headless>=4.9",
-       "hypothesis>=6"]
+       "hypothesis>=6", "httpx>=0.27"]
 
 [project.scripts]
 sieve = "sieve.__main__:main"
@@ -44,6 +49,7 @@ include = ["sieve*", "athena*"]
 "athena.bundle" = ["*.schema.json"]
 "athena.library.migrations" = ["*.sql"]
 "athena.site" = ["templates/*.html", "static/*", "static/vendor/*/*"]
+"athena.capture" = ["templates/*.html", "static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
