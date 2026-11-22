@@ -15,3 +15,7 @@ uv pip install --python .venv/bin/python mlx-vlm pyobjc-framework-Vision pyobjc-
 
 Results append to `results/<tag>.jsonl`; raw OCR text goes to `results/raw/<tag>/`. Models download to the
 Hugging Face cache (8-bit 4.0 GB, bf16 6.8 GB). `bench.py` never runs the model repo's custom code.
+
+`gen_testset.py` also renders five pages in historical styles (mimeograph, typewriter, newsprint columns, a typeset
+program with a photograph, handwriting) for the capture pilot ([../docs/pilot.md](../docs/pilot.md)). `bench.py`
+doesn't read them, so the Phase 0 results above stand as measured.
