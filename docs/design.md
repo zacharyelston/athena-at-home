@@ -40,6 +40,12 @@ Rules for the modules that follow from this:
 
 The platform below is **one deployment**: the author's household.
 
+**How it runs** ([ADR 0001](adr/0001-containers-and-postgres.md)): every server-side module is a container with its
+data on mounted volumes, first as a Docker Compose stack on a mini, later as a Kustomize-deployed Namespace per
+library in a home cluster, which a business can scale onto a larger one. PostgreSQL is each library's database.
+Sieve runs natively on Apple Silicon (no Metal GPU in containers); a vLLM-backed Sieve image is for NVIDIA
+deployments.
+
 ## Platform (reference deployment: the author's household)
 
 The home hardware, and what each machine does. The NAS is defined at release; until then nothing may assume
@@ -101,7 +107,7 @@ servers, accounts or GPUs.
  Mac desk camera  ─┐                 ┌─────────────────────────────────────┐
  iPhone scan      ─┼─ capture  ───►  │ ingest ─► library store              │ ─►  HomeLibrarian (search,
  Linux camera     ─┤  bundle         │   │       originals (sha256, RO)     │      browse, review queue,
- email (later)    ─┘                 │   │       derivatives, SQLite+FTS5   │      retention reminders)
+ email (later)    ─┘                 │   │       derivatives, PostgreSQL    │      retention reminders)
                                      │   ▼                                  │
                                      │ home NATS (own server, own accounts) │ ─►  FamilyFinances service
                                      │   ocr.page   (req/reply)             │      (statements → transactions)
@@ -157,8 +163,10 @@ manifest.
 ### HomeLibrarian: store and schema
 
 - **Originals**: `originals/<sha256[:2]>/<sha256>.<ext>`, write-once. Never edited, never deleted by software.
-- **Index**: SQLite with FTS5 to start (single writer = the ingest service). Postgres only if multi-writer needs
-  appear.
+- **Database**: PostgreSQL, one per library, in a container with the files on a mounted volume
+  ([ADR 0001](adr/0001-containers-and-postgres.md)): tables for records, `jsonb` for per-deployment fields,
+  full-text search, an append-only `assertion` table for provenance and audit, and `pgvector` and graph tables when
+  they're needed. (Earlier drafts said SQLite; the ADR explains the change.)
 - Core tables: `document` (id, title, type, date, institution, people, tags, retention_until, status),
   `page` (document, n, image sha256, dpi, quality), `text` (page, engine, engine_version, markdown, confidence),
   `field` (document, name, value, source engine, confidence, confirmed_by), `capture` (bundle provenance).
@@ -193,7 +201,7 @@ that hashes, stores, indexes tier-0 text in FTS5, and serves a simple search/bro
 `~/FamilyFinances` as the first real collection.
 
 **Phase 2: background OCR and classification.**
-Home NATS on the Ubuntu mini (`nats-server` as a systemd service); Sieve on the M1 subscribes over the LAN; port `gpu_worker.py` / `pdf_ocr_worker.py` as `ocr.page` / `ocr.jobs`; tier-1 markdown
+Home NATS on the Ubuntu mini (a container in the site's compose stack; see ADR 0001); Sieve on the M1 subscribes over the LAN; port `gpu_worker.py` / `pdf_ocr_worker.py` as `ocr.page` / `ocr.jobs`; tier-1 markdown
 replaces tier-0 text; tier-2 extraction feeds the review queue.
 
 **Phase 3: more sources and FamilyFinances.**
