@@ -8,7 +8,26 @@
 | **Size** | 3 days agent work, plus about two hours of capture and two hours of transcription |
 | **Depends on** | D01 (pilot sample), D03 (Sieve on the M1), D05 (bundle layout) |
 | **Week** | W1 (fixtures, scorer, capture if the sample is at hand) – W2 (scores and **decision by Wed Dec 2**) |
-| **Branch** | `feat/capture-pilot` (from `feat/capture-bundle`) |
+| **Branch** | `feat/capture-pilot` (from `feat/capture-tool`, the top of the stack: bundles come from the capture tool) |
+
+> **Kit built** on `feat/capture-pilot` (2026-11-21); how to run it is in `docs/pilot.md` on that branch. **The
+> pilot itself is not done**: no real page has been captured, transcribed or scored, and there is no decision note.
+> - `phase0/gen_testset.py` has the five historical styles (mimeograph, typewriter, three-column newsprint, a
+>   program with a photograph, a script-font "hand"), with ground truth.
+> - `python -m pilot.run | pilot.score | pilot.report` over capture bundles: both engines, DeepSeek at Sieve's
+>   tile choice and at six tiles; CER, word F1, exact key items; agreement between engines on untranscribed pages.
+> - Labels come from what the capture tool already records: material is the describe form's "Made how"; method is
+>   the station name given at import; the ten comparison pages are items tagged `comparison`.
+> - The report applies the criteria below and holds numbers and material, method and engine names only. Results
+>   and transcriptions are refused inside the repository.
+> - Running the capture tool on the historical styles found three faults in it, fixed on this branch: a scan with a
+>   large picture was cropped to the picture; sparse regions read as "soft"; a picture read as uneven light.
+> - A dry run with the real engines on synthetic captures (M3, not the M1) is written up in `docs/pilot.md`. Two
+>   things to look for on real pages: Sieve's tile policy read a sparse program page from the overview and lost its
+>   small caption (word F1 0.89; 0.98 with six tiles), and Apple Vision reads multi-column pages across the columns.
+>
+> **For the people, next:** the pilot sample (D01); capture it and import each method under its own `--station`
+> name; set "Made how" and tag the comparison items; type about fifteen transcriptions as `pages.tsv` names them.
 
 ## Why
 
